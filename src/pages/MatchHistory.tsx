@@ -1,19 +1,23 @@
-import { useLiveQuery } from 'dexie-react-hooks'
+﻿import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { db } from '../db/database'
+import { fetchAllMatches, fetchMatch } from '../db/operations'
+import type { MatchRecord } from '../db/types'
 import type { Match } from '../types/cricket'
 import { scoreString, oversDisplay } from '../utils/cricket'
 import BackButton from '../components/BackButton'
+
 export default function MatchHistory() {
   const navigate = useNavigate()
   const { id } = useParams<{ id?: string }>()
 
-  const matches = useLiveQuery(
-    () => db.matches.orderBy('completedAt').reverse().toArray(),
-    []
-  )
+  const [matches, setMatches] = useState<MatchRecord[] | null>(null)
 
-  // Detail view for a single match
+  useEffect(() => {
+    if (!id) {
+      fetchAllMatches().then(setMatches)
+    }
+  }, [id])
+
   if (id) {
     return <MatchDetail matchId={id} onBack={() => navigate('/history')} />
   }
@@ -34,7 +38,7 @@ export default function MatchHistory() {
           <h1 className="text-xl font-bold">Match History</h1>
         </div>
         <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center">
-          <div className="text-5xl">📋</div>
+          <div className="text-5xl">&#x1F4CB;</div>
           <p className="text-gray-400">No matches recorded yet.<br />Complete a match to see it here.</p>
           <button className="btn-primary" onClick={() => navigate('/setup')}>Start a Match</button>
         </div>
@@ -54,15 +58,15 @@ export default function MatchHistory() {
         {matches.map((m) => (
           <button
             key={m.id}
-            className="card w-full text-left hover:bg-gray-750 transition-colors active:scale-[0.99]"
+            className="card w-full text-left hover:bg-gray-700/80 transition-colors active:scale-[0.99]"
             onClick={() => navigate(`/history/${m.id}`)}
           >
             <div className="flex justify-between items-start">
               <div>
                 <p className="font-bold">{m.teamAName} vs {m.teamBName}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{m.maxOvers} overs · {new Date(m.completedAt).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{m.maxOvers} overs &middot; {new Date(m.completedAt).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
               </div>
-              <span className="text-gray-500 text-lg">›</span>
+              <span className="text-gray-500 text-lg">&#x203A;</span>
             </div>
             {m.result && (
               <p className="text-sm text-green-400 mt-2 font-medium">{m.result}</p>
@@ -76,9 +80,19 @@ export default function MatchHistory() {
 
 function MatchDetail({ matchId, onBack }: { matchId: string; onBack: () => void }) {
   const navigate = useNavigate()
-  const matchRecord = useLiveQuery(() => db.matches.get(matchId), [matchId])
+  const [matchRecord, setMatchRecord] = useState<MatchRecord | null | undefined>(undefined)
 
-  if (!matchRecord) return <div className="flex flex-col min-h-screen px-6 py-12 items-center justify-center"><div className="text-gray-400">Loading...</div></div>
+  useEffect(() => {
+    fetchMatch(matchId).then(setMatchRecord)
+  }, [matchId])
+
+  if (matchRecord === undefined) {
+    return <div className="flex flex-col min-h-screen px-6 py-12 items-center justify-center"><div className="text-gray-400">Loading...</div></div>
+  }
+
+  if (!matchRecord) {
+    return <div className="flex flex-col min-h-screen px-6 py-12 items-center justify-center"><div className="text-gray-400">Match not found.</div></div>
+  }
 
   const match: Match = JSON.parse(matchRecord.snapshot)
   const i1 = match.innings[0]

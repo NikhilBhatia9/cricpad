@@ -1,7 +1,7 @@
-import { useLiveQuery } from 'dexie-react-hooks'
+﻿import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { db } from '../db/database'
-import { computeCareerBatting, computeCareerBowling } from '../db/operations'
+import { fetchPlayer, fetchPlayerStats, fetchMatchesByIds, computeCareerBatting, computeCareerBowling } from '../db/operations'
+import type { PlayerRecord, MatchRecord, PlayerMatchStat } from '../db/types'
 import BackButton from '../components/BackButton'
 
 export default function PlayerDetail() {
@@ -9,24 +9,27 @@ export default function PlayerDetail() {
   const navigate = useNavigate()
   const playerName = decodeURIComponent(name ?? '')
 
-  const player = useLiveQuery(() => db.players.get(playerName), [playerName])
-  const stats = useLiveQuery(
-    () => db.playerStats.where('playerName').equals(playerName).toArray(),
-    [playerName]
-  )
+  const [loading, setLoading] = useState(true)
+  const [player, setPlayer] = useState<PlayerRecord | null | undefined>(undefined)
+  const [stats, setStats] = useState<PlayerMatchStat[]>([])
+  const [playerMatches, setPlayerMatches] = useState<MatchRecord[]>([])
 
-  // Derive match IDs from stats (empty array while loading)
-  const matchIds = stats ? [...new Set(stats.map((s) => s.matchId))] : []
+  useEffect(() => {
+    setLoading(true)
+    Promise.all([
+      fetchPlayer(playerName),
+      fetchPlayerStats(playerName),
+    ]).then(async ([p, s]) => {
+      setPlayer(p)
+      setStats(s)
+      const ids = [...new Set(s.map((st) => st.matchId))]
+      const matches = await fetchMatchesByIds(ids)
+      setPlayerMatches(matches)
+      setLoading(false)
+    })
+  }, [playerName])
 
-  const playerMatches = useLiveQuery(
-    () =>
-      matchIds.length > 0
-        ? db.matches.where('id').anyOf(matchIds).sortBy('completedAt').then((ms) => ms.reverse().slice(0, 10))
-        : Promise.resolve([]),
-    [matchIds.join(',')]
-  )
-
-  if (player === undefined || stats === undefined || playerMatches === undefined) {
+  if (loading) {
     return (
       <div className="flex flex-col min-h-screen px-6 py-12 items-center justify-center">
         <div className="text-gray-400">Loading...</div>
@@ -34,7 +37,7 @@ export default function PlayerDetail() {
     )
   }
 
-  if (player === null) {
+  if (!player) {
     return (
       <div className="flex flex-col min-h-screen px-6 py-12 items-center justify-center gap-4">
         <p className="text-gray-400">Player not found.</p>
@@ -45,6 +48,7 @@ export default function PlayerDetail() {
 
   const bat = computeCareerBatting(stats)
   const bowl = computeCareerBowling(stats)
+  const matchIds = [...new Set(stats.map((s) => s.matchId))]
 
   return (
     <div className="px-4 py-6 max-w-lg mx-auto pb-10">
@@ -54,7 +58,7 @@ export default function PlayerDetail() {
 
       {/* Header */}
       <div className="card mb-4 text-center">
-        <div className="text-5xl mb-2">🏏</div>
+        <div className="text-5xl mb-2">&#x1F3CF;</div>
         <h1 className="text-2xl font-bold">{player.name}</h1>
         <p className="text-gray-400 text-sm mt-1">{matchIds.length} match{matchIds.length !== 1 ? 'es' : ''} played</p>
       </div>
@@ -62,7 +66,7 @@ export default function PlayerDetail() {
       {/* Batting */}
       {bat.innings > 0 && (
         <div className="card mb-4">
-          <h2 className="font-semibold text-gray-300 mb-3">🏏 Batting</h2>
+          <h2 className="font-semibold text-gray-300 mb-3">&#x1F3CF; Batting</h2>
           <div className="grid grid-cols-4 gap-2 mb-3">
             <StatBox label="Matches" value={bat.matches} />
             <StatBox label="Innings" value={bat.innings} />
@@ -86,7 +90,7 @@ export default function PlayerDetail() {
       {/* Bowling */}
       {bowl.legalBalls > 0 && (
         <div className="card mb-4">
-          <h2 className="font-semibold text-gray-300 mb-3">🎯 Bowling</h2>
+          <h2 className="font-semibold text-gray-300 mb-3">&#x1F3AF; Bowling</h2>
           <div className="grid grid-cols-4 gap-2 mb-3">
             <StatBox label="Wickets" value={bowl.wickets} highlight />
             <StatBox label="Overs" value={`${Math.floor(bowl.legalBalls / 6)}.${bowl.legalBalls % 6}`} />
@@ -117,7 +121,7 @@ export default function PlayerDetail() {
               return (
                 <button
                   key={m.id}
-                  className="w-full text-left bg-gray-800 rounded-lg p-3 hover:bg-gray-750 transition-colors"
+                  className="w-full text-left bg-gray-800 rounded-lg p-3 hover:bg-gray-700/80 transition-colors"
                   onClick={() => navigate(`/history/${m.id}`)}
                 >
                   <div className="flex justify-between items-center">
@@ -125,8 +129,8 @@ export default function PlayerDetail() {
                     <p className="text-xs text-gray-500">{new Date(m.completedAt).toLocaleDateString()}</p>
                   </div>
                   <div className="flex gap-3 mt-1 text-xs text-gray-400">
-                    {batStat && <span>🏏 {batStat.batRuns} ({batStat.batBalls}b){batStat.batIsOut ? '' : '*'}</span>}
-                    {bowlStat && <span>🎯 {bowlStat.bowlWickets}/{bowlStat.bowlRunsConceded} ({Math.floor(bowlStat.bowlLegalBalls / 6)}.{bowlStat.bowlLegalBalls % 6}ov)</span>}
+                    {batStat && <span>&#x1F3CF; {batStat.batRuns} ({batStat.batBalls}b){batStat.batIsOut ? '' : '*'}</span>}
+                    {bowlStat && <span>&#x1F3AF; {bowlStat.bowlWickets}/{bowlStat.bowlRunsConceded} ({Math.floor(bowlStat.bowlLegalBalls / 6)}.{bowlStat.bowlLegalBalls % 6}ov)</span>}
                   </div>
                 </button>
               )

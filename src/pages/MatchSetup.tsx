@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { v4 as uuidv4 } from 'uuid'
 import { useMatchStore } from '../store/matchStore'
 import type { Team, Player } from '../types/cricket'
-import { db } from '../db/database'
+import { fetchAllPlayers } from '../db/operations'
+import BackButton from '../components/BackButton'
 
 type Assignment = 'A' | 'B' | 'both'
 
@@ -24,9 +25,8 @@ export default function MatchSetup() {
   const [newName, setNewName] = useState('')
 
   useEffect(() => {
-    db.players
-      .toArray()
-      .then((ps) => setPool(ps.sort((a, b) => b.totalMatches - a.totalMatches).map((p) => p.name)))
+    fetchAllPlayers()
+      .then((ps) => setPool(ps.map((p) => p.name)))
   }, [])
 
   const teamAPlayers = pool.filter((n) => assignments[n] === 'A' || assignments[n] === 'both')
@@ -73,7 +73,7 @@ export default function MatchSetup() {
 
   return (
     <div className="px-4 py-6 max-w-lg mx-auto pb-10">
-      <button onClick={() => navigate('/')} className="text-gray-400 mb-4 text-sm">? Back</button>
+      <BackButton onClick={() => navigate('/')} />
       <h1 className="text-2xl font-bold mb-6">Match Setup</h1>
 
       {/* Overs */}
@@ -240,7 +240,7 @@ export default function MatchSetup() {
       )}
 
       <button className="btn-primary w-full" onClick={handleStart}>
-        Continue to Toss ?
+        Continue to Toss &#x1F3CF;
       </button>
     </div>
   )

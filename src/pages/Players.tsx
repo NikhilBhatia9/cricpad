@@ -1,8 +1,7 @@
-﻿import { useState } from 'react'
-import { useLiveQuery } from 'dexie-react-hooks'
+﻿import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { db } from '../db/database'
-import { computeCareerBatting, computeCareerBowling } from '../db/operations'
+import { fetchAllPlayers, fetchPlayerStats, computeCareerBatting, computeCareerBowling } from '../db/operations'
+import type { PlayerRecord, PlayerMatchStat } from '../db/types'
 import BackButton from '../components/BackButton'
 
 export default function Players() {
@@ -10,30 +9,38 @@ export default function Players() {
   const [showAdd, setShowAdd] = useState(false)
   const [newName, setNewName] = useState('')
   const [addError, setAddError] = useState('')
+  const [players, setPlayers] = useState<PlayerRecord[] | null>(null)
+  const [statsMap, setStatsMap] = useState<Record<string, PlayerMatchStat[]>>({})
 
-  const players = useLiveQuery(
-    () => db.players.toArray().then((ps) => ps.sort((a, b) => b.totalMatches - a.totalMatches)),
-    []
-  )
-  const allStats = useLiveQuery(() => db.playerStats.toArray(), [])
+  async function loadPlayers() {
+    const ps = await fetchAllPlayers()
+    setPlayers(ps)
+    const map: Record<string, PlayerMatchStat[]> = {}
+    await Promise.all(
+      ps.map(async (p) => {
+        map[p.name] = await fetchPlayerStats(p.name)
+      })
+    )
+    setStatsMap(map)
+  }
+
+  useEffect(() => { loadPlayers() }, [])
 
   async function addPlayer() {
+    const { supabase } = await import('../config/supabase')
     const name = newName.trim()
     if (!name) { setAddError('Enter a name'); return }
-    const existing = await db.players.get(name)
+    const existing = players?.find((p) => p.name === name)
     if (existing) { setAddError('Player already exists'); return }
-    await db.players.put({
-      name,
-      firstSeenAt: new Date().toISOString(),
-      lastSeenAt: new Date().toISOString(),
-      totalMatches: 0,
-    })
+    const now = new Date().toISOString()
+    await supabase.from('players').insert({ name, first_seen_at: now, last_seen_at: now, total_matches: 0 })
     setNewName('')
     setShowAdd(false)
     setAddError('')
+    loadPlayers()
   }
 
-  if (!players || !allStats) {
+  if (!players) {
     return (
       <div className="flex flex-col min-h-screen px-6 py-12 items-center justify-center">
         <div className="text-gray-400">Loading...</div>
@@ -89,7 +96,7 @@ export default function Players() {
 
       <div className="space-y-3">
         {players.map((player) => {
-          const stats = allStats.filter((s) => s.playerName === player.name)
+          const stats = statsMap[player.name] ?? []
           const bat = computeCareerBatting(stats)
           const bowl = computeCareerBowling(stats)
           return (
