@@ -39,11 +39,19 @@ export default function Scoring() {
 
   const needsBatsmen = !innings.strikerId || !innings.nonStrikerId
   const needsBowler = !innings.bowlerId
-  const isNewOver = innings.totalLegalBalls > 0 && innings.totalLegalBalls % 6 === 0
+  // isNewOver: end of an over AND the next over hasn't been started yet
+  const isNewOver = innings.totalLegalBalls > 0 &&
+    innings.totalLegalBalls % 6 === 0 &&
+    innings.overs.length < Math.floor(innings.totalLegalBalls / 6) + 1
 
   const striker = innings.strikerId ? innings.batsmen[innings.strikerId] : null
   const nonStriker = innings.nonStrikerId ? innings.batsmen[innings.nonStrikerId] : null
   const bowler = innings.bowlerId ? innings.bowlers[innings.bowlerId] : null
+
+  // The bowler who just finished cannot bowl the immediate next over
+  const lastOverBowlerId = isNewOver && innings.overs.length > 0
+    ? innings.overs[innings.overs.length - 1].bowlerId
+    : null
 
   function recordRuns(runs: number) {
     if (!innings!.strikerId || !innings!.bowlerId) return
@@ -104,6 +112,7 @@ export default function Scoring() {
       <PlayerSelector
         title={`Select Bowler — Over ${overNum}`}
         players={fieldingTeam.players}
+        exclude={lastOverBowlerId ? [lastOverBowlerId] : []}
         onSelect={(id) => { setBowler(id) }}
         isBowler
       />

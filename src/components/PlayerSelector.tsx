@@ -95,6 +95,21 @@ export default function PlayerSelector({
           </button>
         ))}
       </div>
+      {isBowler && exclude.length > 0 && (
+        <div className="mt-4">
+          <p className="text-xs text-gray-600 text-center uppercase tracking-wide mb-2">Cannot bowl this over</p>
+          <div className="grid grid-cols-2 gap-3">
+            {players.filter((p) => exclude.includes(p.id)).map((p) => (
+              <div
+                key={p.id}
+                className="bg-gray-800 text-gray-600 font-semibold py-4 rounded-2xl text-lg text-center cursor-not-allowed line-through"
+              >
+                🎯 {p.name}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
