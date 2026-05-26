@@ -19,17 +19,17 @@ export async function saveMatch(match: Match): Promise<void> {
     snapshot: JSON.stringify(match),
   })
 
-  // Upsert all players
-  const allPlayers = [...match.teams[0].players, ...match.teams[1].players]
-  for (const player of allPlayers) {
-    const existing = await db.players.get(player.name)
+  // Upsert all players — deduplicate by name so shared players aren't double-counted
+  const uniqueNames = [...new Set([...match.teams[0].players, ...match.teams[1].players].map((p) => p.name))]
+  for (const name of uniqueNames) {
+    const existing = await db.players.get(name)
     if (existing) {
-      await db.players.update(player.name, {
+      await db.players.update(name, {
         lastSeenAt: completedAt,
         totalMatches: existing.totalMatches + 1,
       })
     } else {
-      await db.players.put({ name: player.name, firstSeenAt: completedAt, lastSeenAt: completedAt, totalMatches: 1 })
+      await db.players.put({ name, firstSeenAt: completedAt, lastSeenAt: completedAt, totalMatches: 1 })
     }
   }
 
