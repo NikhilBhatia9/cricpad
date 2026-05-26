@@ -25,9 +25,9 @@ export default function MatchSetup() {
   const [knownPlayers, setKnownPlayers] = useState<string[]>([])
 
   useEffect(() => {
-    db.players.orderBy('totalMatches').reverse().keys().then((names) =>
-      setKnownPlayers(names as string[])
-    )
+    db.players.toArray().then((ps) =>
+        setKnownPlayers(ps.sort((a, b) => b.totalMatches - a.totalMatches).map((p) => p.name))
+      )
   }, [])
 
   function handleStart() {

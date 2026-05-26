@@ -6,7 +6,10 @@ import { computeCareerBatting, computeCareerBowling } from '../db/operations'
 export default function Players() {
   const navigate = useNavigate()
 
-  const players = useLiveQuery(() => db.players.orderBy('totalMatches').reverse().toArray(), [])
+  const players = useLiveQuery(
+    () => db.players.toArray().then((ps) => ps.sort((a, b) => b.totalMatches - a.totalMatches)),
+    []
+  )
   const allStats = useLiveQuery(() => db.playerStats.toArray(), [])
 
   if (!players || !allStats) {
