@@ -50,7 +50,7 @@ export async function saveMatch(match: Match): Promise<void> {
         batRuns: b.runs, batBalls: b.balls, batFours: b.fours, batSixes: b.sixes,
         batIsOut: b.isOut, batWicketType: b.wicketType, batDidBat: true,
         bowlLegalBalls: 0, bowlRunsConceded: 0, bowlWickets: 0,
-        bowlWides: 0, bowlNoBalls: 0, bowlDidBowl: false,
+        bowlWides: 0, bowlNoBalls: 0, bowlMaidens: 0, bowlDidBowl: false,
       })
     }
 
