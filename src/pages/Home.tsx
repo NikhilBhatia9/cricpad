@@ -76,6 +76,13 @@ export default function Home() {
             📋 History
           </button>
         </div>
+
+        <button
+          className="btn-secondary flex items-center justify-center gap-2"
+          onClick={() => navigate('/join')}
+        >
+          🔗 Join a Match
+        </button>
       </div>
     </div>
   )

@@ -8,10 +8,13 @@ import Result from './pages/Result'
 import Players from './pages/Players'
 import PlayerDetail from './pages/PlayerDetail'
 import MatchHistory from './pages/MatchHistory'
+import JoinMatch from './pages/JoinMatch'
+import SyncManager from './components/SyncManager'
 
 export default function App() {
   return (
     <BrowserRouter basename="/social-cricket-scorer">
+      <SyncManager />
       <div className="min-h-screen bg-gray-900 text-white font-sans">
         <Routes>
           <Route path="/"                  element={<Home />} />
@@ -24,6 +27,7 @@ export default function App() {
           <Route path="/players/:name"     element={<PlayerDetail />} />
           <Route path="/history"           element={<MatchHistory />} />
           <Route path="/history/:id"       element={<MatchHistory />} />
+          <Route path="/join"              element={<JoinMatch />} />
           <Route path="*"                  element={<Navigate to="/" replace />} />
         </Routes>
       </div>

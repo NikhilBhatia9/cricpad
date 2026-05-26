@@ -7,6 +7,7 @@ import type {
 
 interface MatchStore {
   match: Match | null
+  roomCode: string | null
 
   // Setup
   createMatch: (teams: [Team, Team], maxOvers: number) => void
@@ -22,6 +23,10 @@ interface MatchStore {
   startSecondInnings: () => void
   completeMatch: () => void
   resetMatch: () => void
+
+  // Sync
+  setRoomCode: (code: string | null) => void
+  loadRemoteMatch: (match: Match) => void
 }
 
 function createInnings(battingTeamIndex: 0 | 1, target?: number): Innings {
@@ -46,6 +51,7 @@ export const useMatchStore = create<MatchStore>()(
   persist(
     (set) => ({
       match: null,
+      roomCode: null,
 
       createMatch: (teams, maxOvers) => {
         const match: Match = {
@@ -293,7 +299,11 @@ export const useMatchStore = create<MatchStore>()(
         })
       },
 
-      resetMatch: () => set({ match: null }),
+      resetMatch: () => set({ match: null, roomCode: null }),
+
+      setRoomCode: (code) => set({ roomCode: code }),
+
+      loadRemoteMatch: (match) => set({ match }),
     }),
     { name: 'cricket-match' }
   )

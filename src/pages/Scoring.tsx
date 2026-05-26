@@ -4,6 +4,7 @@ import { useMatchStore } from '../store/matchStore'
 import { oversDisplay, runRate, requiredRunRate, currentOverBalls, ballColorClass } from '../utils/cricket'
 import type { WicketType, ExtraType } from '../types/cricket'
 import PlayerSelector from '../components/PlayerSelector'
+import ShareMatchModal from '../components/ShareMatchModal'
 
 const WICKET_TYPES: WicketType[] = ['Bowled', 'Caught', 'LBW', 'Run Out', 'Stumped', 'Hit Wicket', 'Retired']
 
@@ -13,6 +14,7 @@ export default function Scoring() {
 
   const [showWicketModal, setShowWicketModal] = useState(false)
   const [pendingExtra, setPendingExtra] = useState<ExtraType | null>(null)
+  const [showShare, setShowShare] = useState(false)
   const [showPlayerSelect, setShowPlayerSelect] = useState<'striker' | 'nonStriker' | 'bowler' | null>(null)
 
   if (!match) return <div className="p-6 text-center">No match. <button onClick={() => navigate('/')} className="text-green-400">Go home</button></div>
@@ -160,7 +162,13 @@ export default function Scoring() {
               {' · '}RR {runRate(innings.totalRuns, innings.totalLegalBalls)}
             </p>
           </div>
-          <div className="text-right">
+          <div className="text-right flex flex-col items-end gap-2">
+            <button
+              className="bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors"
+              onClick={() => setShowShare(true)}
+            >
+              🔗 Share
+            </button>
             <p className="text-xs text-gray-400">{match.maxOvers} overs</p>
             {innings.target && (
               <div className="text-right">
@@ -252,6 +260,8 @@ export default function Scoring() {
           🏠 Menu
         </button>
       </div>
+
+      {showShare && <ShareMatchModal onClose={() => setShowShare(false)} />}
     </div>
   )
 }
