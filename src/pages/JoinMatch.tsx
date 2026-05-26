@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMatchStore } from '../store/matchStore'
 import { subscribeToRoom } from '../services/matchSync'
 import { isFirebaseConfigured } from '../config/firebase'
+import BackButton from '../components/BackButton'
 
 export default function JoinMatch() {
   const navigate = useNavigate()
@@ -64,7 +65,7 @@ export default function JoinMatch() {
 
   return (
     <div className="flex flex-col min-h-screen px-6 py-12 max-w-md mx-auto">
-      <button onClick={() => navigate('/')} className="text-gray-400 text-sm mb-8 self-start">← Back</button>
+      <BackButton onClick={() => navigate('/')} />
 
       <div className="flex-1 flex flex-col justify-center gap-6">
         <div className="text-center">

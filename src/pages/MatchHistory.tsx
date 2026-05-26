@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { db } from '../db/database'
 import type { Match } from '../types/cricket'
 import { scoreString, oversDisplay } from '../utils/cricket'
+import BackButton from '../components/BackButton'
 export default function MatchHistory() {
   const navigate = useNavigate()
   const { id } = useParams<{ id?: string }>()
@@ -29,7 +30,7 @@ export default function MatchHistory() {
     return (
       <div className="flex flex-col min-h-screen px-6">
         <div className="flex items-center gap-3 py-5">
-          <button onClick={() => navigate('/')} className="text-gray-400 text-sm">← Back</button>
+          <BackButton onClick={() => navigate('/')} />
           <h1 className="text-xl font-bold">Match History</h1>
         </div>
         <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center">
@@ -44,7 +45,7 @@ export default function MatchHistory() {
   return (
     <div className="px-4 py-6 max-w-lg mx-auto">
       <div className="flex items-center gap-3 mb-6">
-        <button onClick={() => navigate('/')} className="text-gray-400 text-sm">← Back</button>
+        <BackButton onClick={() => navigate('/')} />
         <h1 className="text-xl font-bold">Match History</h1>
         <span className="ml-auto text-gray-500 text-sm">{matches.length} match{matches.length !== 1 ? 'es' : ''}</span>
       </div>
@@ -86,7 +87,7 @@ function MatchDetail({ matchId, onBack }: { matchId: string; onBack: () => void 
   return (
     <div className="px-4 py-6 max-w-lg mx-auto pb-10">
       <div className="flex items-center gap-3 mb-5">
-        <button onClick={onBack} className="text-gray-400 text-sm">← History</button>
+        <BackButton onClick={onBack} label="History" />
       </div>
 
       <div className="text-center mb-5">

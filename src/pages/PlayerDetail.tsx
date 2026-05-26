@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useNavigate, useParams } from 'react-router-dom'
 import { db } from '../db/database'
 import { computeCareerBatting, computeCareerBowling } from '../db/operations'
+import BackButton from '../components/BackButton'
 
 export default function PlayerDetail() {
   const { name } = useParams<{ name: string }>()
@@ -37,7 +38,7 @@ export default function PlayerDetail() {
     return (
       <div className="flex flex-col min-h-screen px-6 py-12 items-center justify-center gap-4">
         <p className="text-gray-400">Player not found.</p>
-        <button className="btn-secondary" onClick={() => navigate('/players')}>← Players</button>
+        <BackButton onClick={() => navigate('/players')} label="Players" />
       </div>
     )
   }
@@ -48,7 +49,7 @@ export default function PlayerDetail() {
   return (
     <div className="px-4 py-6 max-w-lg mx-auto pb-10">
       <div className="flex items-center gap-3 mb-6">
-        <button onClick={() => navigate('/players')} className="text-gray-400 text-sm">← Players</button>
+        <BackButton onClick={() => navigate('/players')} label="Players" />
       </div>
 
       {/* Header */}

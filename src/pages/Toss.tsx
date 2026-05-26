@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useMatchStore } from '../store/matchStore'
+import BackButton from '../components/BackButton'
 
 export default function Toss() {
   const navigate = useNavigate()
@@ -14,7 +15,7 @@ export default function Toss() {
 
   return (
     <div className="flex flex-col min-h-screen px-6 py-12">
-      <button onClick={() => navigate('/setup')} className="text-gray-400 mb-4 text-sm self-start">← Back</button>
+      <BackButton onClick={() => navigate('/setup')} label="Setup" />
 
       <div className="flex-1 flex flex-col items-center justify-center gap-8">
         <div className="text-5xl">🪙</div>
