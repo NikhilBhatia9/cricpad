@@ -5,6 +5,8 @@ import { useMatchStore } from '../store/matchStore'
 import type { Team, Player } from '../types/cricket'
 import { db } from '../db/database'
 
+type Assignment = 'A' | 'B' | 'both'
+
 function buildTeam(name: string, playerNames: string[]): Team {
   const players: Player[] = playerNames.map((n) => ({ id: uuidv4(), name: n }))
   return { name, players }
@@ -18,7 +20,7 @@ export default function MatchSetup() {
   const [teamBName, setTeamBName] = useState('')
   const [overs, setOvers] = useState('10')
   const [pool, setPool] = useState<string[]>([])
-  const [assignments, setAssignments] = useState<Record<string, 'A' | 'B'>>({})
+  const [assignments, setAssignments] = useState<Record<string, Assignment>>({})
   const [newName, setNewName] = useState('')
 
   useEffect(() => {
@@ -27,18 +29,27 @@ export default function MatchSetup() {
       .then((ps) => setPool(ps.sort((a, b) => b.totalMatches - a.totalMatches).map((p) => p.name)))
   }, [])
 
-  const teamAPlayers = pool.filter((n) => assignments[n] === 'A')
-  const teamBPlayers = pool.filter((n) => assignments[n] === 'B')
+  const teamAPlayers = pool.filter((n) => assignments[n] === 'A' || assignments[n] === 'both')
+  const teamBPlayers = pool.filter((n) => assignments[n] === 'B' || assignments[n] === 'both')
+  const sharedPlayers = pool.filter((n) => assignments[n] === 'both')
   const unassigned = pool.filter((n) => !assignments[n])
 
   function toggle(name: string, team: 'A' | 'B') {
     setAssignments((prev) => {
-      if (prev[name] === team) {
-        const next = { ...prev }
-        delete next[name]
-        return next
+      const current = prev[name] as Assignment | undefined
+      const next = { ...prev }
+      if (team === 'A') {
+        if (!current) { next[name] = 'A' }
+        else if (current === 'A') { delete next[name] }
+        else if (current === 'B') { next[name] = 'both' }
+        else if (current === 'both') { next[name] = 'B' }
+      } else {
+        if (!current) { next[name] = 'B' }
+        else if (current === 'B') { delete next[name] }
+        else if (current === 'A') { next[name] = 'both' }
+        else if (current === 'both') { next[name] = 'A' }
       }
-      return { ...prev, [name]: team }
+      return next
     })
   }
 
@@ -165,14 +176,33 @@ export default function MatchSetup() {
             </>
           )}
 
+          {/* Shared */}
+          {sharedPlayers.length > 0 && (
+            <>
+              <p className="text-xs text-yellow-500 uppercase tracking-wide mb-2">âš¡ Shared â€” Both Teams ({sharedPlayers.length})</p>
+              <div className="space-y-2 mb-4">
+                {sharedPlayers.map((name) => (
+                  <PlayerRow
+                    key={name}
+                    name={name}
+                    assigned="both"
+                    teamALabel={teamAName || 'Team A'}
+                    teamBLabel={teamBName || 'Team B'}
+                    onToggle={toggle}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+
           {/* Team A */}
-          {teamAPlayers.length > 0 && (
+          {teamAPlayers.filter((n) => assignments[n] === 'A').length > 0 && (
             <>
               <p className="text-xs text-green-500 uppercase tracking-wide mb-2">
-                {teamAName || 'Team A'} ({teamAPlayers.length})
+                {teamAName || 'Team A'} only ({teamAPlayers.filter((n) => assignments[n] === 'A').length})
               </p>
               <div className="space-y-2 mb-4">
-                {teamAPlayers.map((name) => (
+                {teamAPlayers.filter((n) => assignments[n] === 'A').map((name) => (
                   <PlayerRow
                     key={name}
                     name={name}
@@ -187,13 +217,13 @@ export default function MatchSetup() {
           )}
 
           {/* Team B */}
-          {teamBPlayers.length > 0 && (
+          {teamBPlayers.filter((n) => assignments[n] === 'B').length > 0 && (
             <>
               <p className="text-xs text-blue-500 uppercase tracking-wide mb-2">
-                {teamBName || 'Team B'} ({teamBPlayers.length})
+                {teamBName || 'Team B'} only ({teamBPlayers.filter((n) => assignments[n] === 'B').length})
               </p>
               <div className="space-y-2">
-                {teamBPlayers.map((name) => (
+                {teamBPlayers.filter((n) => assignments[n] === 'B').map((name) => (
                   <PlayerRow
                     key={name}
                     name={name}
@@ -220,33 +250,36 @@ function PlayerRow({
   name, assigned, teamALabel, teamBLabel, onToggle,
 }: {
   name: string
-  assigned: 'A' | 'B' | undefined
+  assigned: Assignment | undefined
   teamALabel: string
   teamBLabel: string
   onToggle: (name: string, team: 'A' | 'B') => void
 }) {
+  const inA = assigned === 'A' || assigned === 'both'
+  const inB = assigned === 'B' || assigned === 'both'
   return (
-    <div className="flex items-center gap-2 bg-gray-800 rounded-lg px-3 py-2">
-      <span className="flex-1 text-sm font-medium truncate">{name}</span>
+    <div className={`flex items-center gap-2 rounded-lg px-3 py-2 ${
+      assigned === 'both' ? 'bg-yellow-900/30 border border-yellow-700/40' : 'bg-gray-800'
+    }`}>
+      <span className="flex-1 text-sm font-medium truncate">
+        {name}
+        {assigned === 'both' && <span className="ml-2 text-xs text-yellow-400 font-normal">shared</span>}
+      </span>
       <button
         onClick={() => onToggle(name, 'A')}
         className={`px-3 py-1 rounded-md text-xs font-bold transition-colors ${
-          assigned === 'A'
-            ? 'bg-green-600 text-white'
-            : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+          inA ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
         }`}
       >
-        {teamALabel.length > 8 ? teamALabel.slice(0, 7) + '…' : teamALabel}
+        {teamALabel.length > 8 ? teamALabel.slice(0, 7) + '...' : teamALabel}
       </button>
       <button
         onClick={() => onToggle(name, 'B')}
         className={`px-3 py-1 rounded-md text-xs font-bold transition-colors ${
-          assigned === 'B'
-            ? 'bg-blue-600 text-white'
-            : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+          inB ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
         }`}
       >
-        {teamBLabel.length > 8 ? teamBLabel.slice(0, 7) + '…' : teamBLabel}
+        {teamBLabel.length > 8 ? teamBLabel.slice(0, 7) + '...' : teamBLabel}
       </button>
     </div>
   )
