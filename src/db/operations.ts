@@ -54,6 +54,21 @@ export async function saveMatch(match: Match): Promise<void> {
       })
     }
 
+    // Compute maiden count per bowler from completed overs
+    const maidensByBowler: Record<string, number> = {}
+    for (const over of innings.overs) {
+      const legalBalls = over.balls.filter((b) => b.isLegal).length
+      if (legalBalls >= 6) {
+        const conceded = over.balls.reduce((sum, b) => {
+          if (b.extraType === 'bye' || b.extraType === 'legbye') return sum
+          return sum + b.runsOffBat + b.extras
+        }, 0)
+        if (conceded === 0) {
+          maidensByBowler[over.bowlerId] = (maidensByBowler[over.bowlerId] ?? 0) + 1
+        }
+      }
+    }
+
     // Bowling records
     for (const b of Object.values(innings.bowlers)) {
       statsToAdd.push({
@@ -63,6 +78,7 @@ export async function saveMatch(match: Match): Promise<void> {
         batIsOut: false, batDidBat: false,
         bowlLegalBalls: b.legalBalls, bowlRunsConceded: b.runsConceded,
         bowlWickets: b.wickets, bowlWides: b.wides, bowlNoBalls: b.noBalls,
+        bowlMaidens: maidensByBowler[b.playerId] ?? 0,
         bowlDidBowl: true,
       })
     }
@@ -96,8 +112,10 @@ export function computeCareerBowling(stats: PlayerMatchStat[]): CareerBowling {
   const legalBalls = bowl.reduce((sum, s) => sum + s.bowlLegalBalls, 0)
   const runsConceded = bowl.reduce((sum, s) => sum + s.bowlRunsConceded, 0)
   const wickets = bowl.reduce((sum, s) => sum + s.bowlWickets, 0)
+  const maidens = bowl.reduce((sum, s) => sum + (s.bowlMaidens ?? 0), 0)
   const economy = legalBalls > 0 ? ((runsConceded / legalBalls) * 6).toFixed(2) : '-'
   const average = wickets > 0 ? (runsConceded / wickets).toFixed(1) : '-'
+  const strikeRate = wickets > 0 ? (legalBalls / wickets).toFixed(1) : '-'
   const best = bowl.reduce(
     (b, s) => {
       if (s.bowlWickets > b.w || (s.bowlWickets === b.w && s.bowlRunsConceded < b.r))
@@ -108,7 +126,7 @@ export function computeCareerBowling(stats: PlayerMatchStat[]): CareerBowling {
   )
   return {
     matches: new Set(bowl.map((s) => s.matchId)).size,
-    legalBalls, runsConceded, wickets, economy, average,
+    legalBalls, runsConceded, wickets, maidens, economy, average, strikeRate,
     bestWickets: best.w, bestRuns: best.r,
   }
 }

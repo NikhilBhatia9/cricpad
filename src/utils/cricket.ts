@@ -45,16 +45,35 @@ export function scoreString(innings: Innings): string {
 }
 
 export function sortedBatsmen(innings: Innings): BatsmanScore[] {
-  return Object.values(innings.batsmen).sort((a, b) => {
-    if (!a.isOut && !b.isOut) return 0
-    if (!a.isOut) return -1
-    if (!b.isOut) return 1
-    return 0
-  })
+  return Object.values(innings.batsmen).sort((a, b) =>
+    (a.battingPosition ?? 999) - (b.battingPosition ?? 999)
+  )
 }
 
-export function sortedBowlers(innings: Innings): BowlerScore[] {
-  return Object.values(innings.bowlers).sort((a, b) => b.legalBalls - a.legalBalls)
+export function sortedBowlers(innings: Innings): Array<BowlerScore & { maidens: number }> {
+  const maidensByBowler: Record<string, number> = {}
+  const firstOverByBowler: Record<string, number> = {}
+
+  for (const over of innings.overs) {
+    if (!(over.bowlerId in firstOverByBowler)) {
+      firstOverByBowler[over.bowlerId] = over.number
+    }
+    // Maiden: completed over where bowler conceded 0 runs (byes/leg-byes don't count against bowler)
+    const legalBalls = over.balls.filter((b) => b.isLegal).length
+    if (legalBalls >= 6) {
+      const conceded = over.balls.reduce((sum, b) => {
+        if (b.extraType === 'bye' || b.extraType === 'legbye') return sum
+        return sum + b.runsOffBat + b.extras
+      }, 0)
+      if (conceded === 0) {
+        maidensByBowler[over.bowlerId] = (maidensByBowler[over.bowlerId] ?? 0) + 1
+      }
+    }
+  }
+
+  return Object.values(innings.bowlers)
+    .sort((a, b) => (firstOverByBowler[a.playerId] ?? 999) - (firstOverByBowler[b.playerId] ?? 999))
+    .map((b) => ({ ...b, maidens: maidensByBowler[b.playerId] ?? 0 }))
 }
 
 export function ballColorClass(ballStr: string): string {

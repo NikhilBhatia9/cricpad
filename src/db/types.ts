@@ -36,6 +36,7 @@ export interface PlayerMatchStat {
   bowlWickets: number
   bowlWides: number
   bowlNoBalls: number
+  bowlMaidens: number
   bowlDidBowl: boolean
 }
 
@@ -58,8 +59,10 @@ export interface CareerBowling {
   legalBalls: number
   runsConceded: number
   wickets: number
+  maidens: number
   economy: string
   average: string
+  strikeRate: string
   bestWickets: number
   bestRuns: number
 }

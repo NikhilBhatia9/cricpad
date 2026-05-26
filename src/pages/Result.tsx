@@ -79,6 +79,7 @@ export default function Result() {
                 <tr className="text-gray-500 text-xs border-b border-gray-700">
                   <th className="text-left pb-2">Bowler</th>
                   <th className="text-right pb-2">O</th>
+                  <th className="text-right pb-2">M</th>
                   <th className="text-right pb-2">R</th>
                   <th className="text-right pb-2">W</th>
                   <th className="text-right pb-2">Eco</th>
@@ -89,6 +90,7 @@ export default function Result() {
                   <tr key={b.playerId} className="border-b border-gray-700/40">
                     <td className="py-1.5 font-medium">{b.name}</td>
                     <td className="text-right text-gray-400">{Math.floor(b.legalBalls / 6)}.{b.legalBalls % 6}</td>
+                    <td className="text-right text-gray-400">{b.maidens}</td>
                     <td className="text-right text-gray-400">{b.runsConceded}</td>
                     <td className="text-right font-bold">{b.wickets}</td>
                     <td className="text-right text-gray-400">{economyRate(b.runsConceded, b.legalBalls)}</td>

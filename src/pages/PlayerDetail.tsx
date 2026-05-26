@@ -63,20 +63,21 @@ export default function PlayerDetail() {
         <div className="card mb-4">
           <h2 className="font-semibold text-gray-300 mb-3">🏏 Batting</h2>
           <div className="grid grid-cols-4 gap-2 mb-3">
+            <StatBox label="Matches" value={bat.matches} />
             <StatBox label="Innings" value={bat.innings} />
             <StatBox label="Runs" value={bat.totalRuns} highlight />
             <StatBox label="Average" value={bat.average} />
-            <StatBox label="S/R" value={bat.strikeRate} />
           </div>
           <div className="grid grid-cols-4 gap-2">
+            <StatBox label="S/R" value={bat.strikeRate} />
             <StatBox label="H/S" value={bat.highestScore} />
             <StatBox label="50s" value={bat.fifties} />
             <StatBox label="100s" value={bat.hundreds} />
-            <StatBox label="6s" value={bat.sixes} />
           </div>
           <div className="mt-2 pt-2 border-t border-gray-700 flex gap-4 text-sm text-gray-400">
             <span>Not Outs: <strong className="text-white">{bat.notOuts}</strong></span>
             <span>4s: <strong className="text-white">{bat.fours}</strong></span>
+            <span>6s: <strong className="text-white">{bat.sixes}</strong></span>
           </div>
         </div>
       )}
@@ -88,12 +89,17 @@ export default function PlayerDetail() {
           <div className="grid grid-cols-4 gap-2 mb-3">
             <StatBox label="Wickets" value={bowl.wickets} highlight />
             <StatBox label="Overs" value={`${Math.floor(bowl.legalBalls / 6)}.${bowl.legalBalls % 6}`} />
+            <StatBox label="Maidens" value={bowl.maidens} />
+            <StatBox label="Runs" value={bowl.runsConceded} />
+          </div>
+          <div className="grid grid-cols-4 gap-2">
             <StatBox label="Economy" value={bowl.economy} />
             <StatBox label="Average" value={bowl.average} />
+            <StatBox label="S/R" value={bowl.strikeRate} />
+            <StatBox label="Best" value={`${bowl.bestWickets}/${bowl.bestRuns}`} />
           </div>
           <div className="mt-2 pt-2 border-t border-gray-700 flex gap-4 text-sm text-gray-400">
-            <span>Best: <strong className="text-white">{bowl.bestWickets}/{bowl.bestRuns}</strong></span>
-            <span>Runs: <strong className="text-white">{bowl.runsConceded}</strong></span>
+            <span>Matches: <strong className="text-white">{bowl.matches}</strong></span>
           </div>
         </div>
       )}

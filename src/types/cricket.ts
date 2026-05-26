@@ -43,6 +43,7 @@ export interface BatsmanScore {
   isOut: boolean
   wicketType?: WicketType
   bowledBy?: string
+  battingPosition: number
 }
 
 export interface BowlerScore {

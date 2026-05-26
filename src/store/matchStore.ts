@@ -97,11 +97,13 @@ export const useMatchStore = create<MatchStore>()(
 
           if (!batsmen[strikerId]) {
             const p = team.players.find((p) => p.id === strikerId)
-            batsmen[strikerId] = { playerId: strikerId, name: p?.name ?? strikerId, runs: 0, balls: 0, fours: 0, sixes: 0, isOut: false }
+            const pos = Object.keys(batsmen).length + 1
+            batsmen[strikerId] = { playerId: strikerId, name: p?.name ?? strikerId, runs: 0, balls: 0, fours: 0, sixes: 0, isOut: false, battingPosition: pos }
           }
           if (!batsmen[nonStrikerId]) {
             const p = team.players.find((p) => p.id === nonStrikerId)
-            batsmen[nonStrikerId] = { playerId: nonStrikerId, name: p?.name ?? nonStrikerId, runs: 0, balls: 0, fours: 0, sixes: 0, isOut: false }
+            const pos = Object.keys(batsmen).length + 1
+            batsmen[nonStrikerId] = { playerId: nonStrikerId, name: p?.name ?? nonStrikerId, runs: 0, balls: 0, fours: 0, sixes: 0, isOut: false, battingPosition: pos }
           }
 
           const updatedInnings = { ...innings, batsmen, strikerId, nonStrikerId }
