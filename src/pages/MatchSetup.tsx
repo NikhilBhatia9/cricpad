@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { v4 as uuidv4 } from 'uuid'
 import { useMatchStore } from '../store/matchStore'
 import type { Team, Player } from '../types/cricket'
+import { db } from '../db/database'
 
 function buildTeam(name: string, playerNames: string[]): Team {
   const players: Player[] = playerNames
@@ -21,6 +22,13 @@ export default function MatchSetup() {
   const [teamAPlayers, setTeamAPlayers] = useState(Array(11).fill(''))
   const [teamBPlayers, setTeamBPlayers] = useState(Array(11).fill(''))
   const [playerCount, setPlayerCount] = useState(11)
+  const [knownPlayers, setKnownPlayers] = useState<string[]>([])
+
+  useEffect(() => {
+    db.players.orderBy('totalMatches').reverse().keys().then((names) =>
+      setKnownPlayers(names as string[])
+    )
+  }, [])
 
   function handleStart() {
     if (!teamAName.trim() || !teamBName.trim()) return alert('Enter both team names')
@@ -107,6 +115,7 @@ export default function MatchSetup() {
               {Array.from({ length: playerCount }).map((_, i) => (
                 <input
                   key={i}
+                  list="player-names"
                   className="input-field text-sm py-2"
                   placeholder={`Player ${i + 1}`}
                   value={players[i]}
@@ -121,6 +130,11 @@ export default function MatchSetup() {
       <button className="btn-primary mt-2" onClick={handleStart}>
         Continue to Toss →
       </button>
+
+      {/* Datalist for player autocomplete */}
+      <datalist id="player-names">
+        {knownPlayers.map((n) => <option key={n} value={n} />)}
+      </datalist>
     </div>
   )
 }

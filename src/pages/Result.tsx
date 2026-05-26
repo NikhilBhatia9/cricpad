@@ -1,10 +1,17 @@
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMatchStore } from '../store/matchStore'
 import { scoreString, oversDisplay, sortedBatsmen, sortedBowlers, strikeRate, economyRate } from '../utils/cricket'
+import { saveMatch } from '../db/operations'
 
 export default function Result() {
   const navigate = useNavigate()
   const { match, resetMatch } = useMatchStore()
+
+  // Auto-save completed match to DB (idempotent — saveMatch checks for duplicates)
+  useEffect(() => {
+    if (match?.status === 'complete') saveMatch(match)
+  }, [match])
 
   if (!match) return <div className="p-6">No match data. <button onClick={() => navigate('/')}>Go home</button></div>
 

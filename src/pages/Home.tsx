@@ -60,6 +60,22 @@ export default function Home() {
             View Last Result
           </button>
         )}
+
+        {/* Stats nav */}
+        <div className="grid grid-cols-2 gap-3 mt-2">
+          <button
+            className="btn-secondary flex items-center justify-center gap-2"
+            onClick={() => navigate('/players')}
+          >
+            👤 Players
+          </button>
+          <button
+            className="btn-secondary flex items-center justify-center gap-2"
+            onClick={() => navigate('/history')}
+          >
+            📋 History
+          </button>
+        </div>
       </div>
     </div>
   )
