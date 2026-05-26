@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { v4 as uuidv4 } from 'uuid'
 import type {
-  Match, Team, Innings, BallEvent, ExtraType, WicketType, Over,
+  Match, Team, Innings, BallEvent,
 } from '../types/cricket'
 
 interface MatchStore {
@@ -44,7 +44,7 @@ function createInnings(battingTeamIndex: 0 | 1, target?: number): Innings {
 
 export const useMatchStore = create<MatchStore>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       match: null,
 
       createMatch: (teams, maxOvers) => {
