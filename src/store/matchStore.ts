@@ -252,7 +252,13 @@ export const useMatchStore = create<MatchStore>()(
           let resultNote: string | undefined
 
           if (chased) {
-            const wicketsLeft = s.match.teams[innings.battingTeamIndex].players.length - 1 - newWickets
+            // Wickets in hand = players not yet dismissed.
+            // When the last batsman wins (no non-striker), there is exactly 1 not-out batsman.
+            // Otherwise: (teamSize - 1) - wickets_fallen (standard cricket formula).
+            const isLastBatsman = !innings.nonStrikerId
+            const wicketsLeft = isLastBatsman
+              ? 1
+              : s.match.teams[innings.battingTeamIndex].players.length - 1 - newWickets
             resultNote = `Won by ${wicketsLeft} wicket${wicketsLeft !== 1 ? 's' : ''}`
           }
 
