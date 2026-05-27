@@ -110,6 +110,25 @@ export default function Scoring() {
   const nonStriker = innings.nonStrikerId ? innings.batsmen[innings.nonStrikerId] : null
   const bowler = innings.bowlerId ? innings.bowlers[innings.bowlerId] : null
 
+  // Shared-player conflict prevention:
+  // A player assigned to both teams has the same name but different IDs in each team.
+  // If they are currently batting, exclude their fielding-team counterpart from the bowler list.
+  // If they are currently bowling, exclude their batting-team counterpart from the batsman list.
+  const activeBatsmanNames = [
+    innings.strikerId ? innings.batsmen[innings.strikerId]?.name : null,
+    innings.nonStrikerId ? innings.batsmen[innings.nonStrikerId]?.name : null,
+  ].filter((n): n is string => !!n)
+
+  const activeBowlerName = innings.bowlerId ? (innings.bowlers[innings.bowlerId]?.name ?? null) : null
+
+  const bowlerExcludeShared = fieldingTeam.players
+    .filter(p => activeBatsmanNames.includes(p.name))
+    .map(p => p.id)
+
+  const batsmanExcludeShared = activeBowlerName
+    ? battingTeam.players.filter(p => p.name === activeBowlerName).map(p => p.id)
+    : []
+
   const lastOverBowlerId = isNewOver && innings.overs.length > 0
     ? innings.overs[innings.overs.length - 1].bowlerId
     : null
@@ -167,6 +186,7 @@ export default function Scoring() {
         exclude={[
           ...Object.keys(innings.batsmen).filter((id) => innings.batsmen[id].isOut),
           innings.nonStrikerId ?? '',
+          ...batsmanExcludeShared,
         ]}
         onSelect={(id) => {
           setBatsmen(id, innings.nonStrikerId ?? '')
@@ -213,7 +233,10 @@ export default function Scoring() {
       <PlayerSelector
         title="Select Opening Batsmen"
         players={battingTeam.players}
-        exclude={Object.keys(innings.batsmen).filter((id) => innings.batsmen[id].isOut)}
+        exclude={[
+          ...Object.keys(innings.batsmen).filter((id) => innings.batsmen[id].isOut),
+          ...batsmanExcludeShared,
+        ]}
         isTwoStep
         currentStriker={innings.strikerId}
         currentNonStriker={innings.nonStrikerId}
@@ -241,7 +264,10 @@ export default function Scoring() {
       <PlayerSelector
         title={`Select Bowler ${'\u2014'} Over ${overNum}`}
         players={fieldingTeam.players}
-        exclude={lastOverBowlerId ? [lastOverBowlerId] : []}
+        exclude={[
+          ...(lastOverBowlerId ? [lastOverBowlerId] : []),
+          ...bowlerExcludeShared,
+        ]}
         onSelect={(id) => { setBowler(id) }}
         isBowler
       />
