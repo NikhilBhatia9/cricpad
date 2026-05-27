@@ -4,6 +4,7 @@ import { supabase } from '../config/supabase'
 import { fetchAllPlayers, fetchPlayerStats, fetchMatchResultsMap, computeCareerBatting, computeCareerBowling, computeCareerRecord, renamePlayer } from '../db/operations'
 import type { PlayerRecord, PlayerMatchStat } from '../db/types'
 import BackButton from '../components/BackButton'
+import { useAuth } from '../hooks/useAuth'
 
 type SortKey = 'matches' | 'wins' | 'losses' | 'runs' | 'wickets' | 'maidens' | 'mvps' | 'average' | 'economy' | 'sixes' | 'catches'
 
@@ -30,6 +31,12 @@ function parseStat(val: string | number, fallback = 0): number {
 
 export default function Players() {
   const navigate = useNavigate()
+  const { isAdmin, user, signIn, signOut } = useAuth()
+  const [showLoginForm, setShowLoginForm] = useState(false)
+  const [loginEmail, setLoginEmail] = useState('')
+  const [loginPassword, setLoginPassword] = useState('')
+  const [loginError, setLoginError] = useState('')
+  const [loginLoading, setLoginLoading] = useState(false)
   const [showAdd, setShowAdd] = useState(false)
   const [newName, setNewName] = useState('')
   const [addError, setAddError] = useState('')
@@ -100,6 +107,16 @@ export default function Players() {
     setEditError('')
   }
 
+  async function handleLogin() {
+    const err = await signIn(loginEmail.trim(), loginPassword)
+    setLoginLoading(false)
+    if (err) { setLoginError(err); return }
+    setShowLoginForm(false)
+    setLoginEmail('')
+    setLoginPassword('')
+    setLoginError('')
+  }
+
   const sortedPlayers = useMemo(() => {
     if (!players) return []
     return [...players].sort((a, b) => {
@@ -156,16 +173,70 @@ export default function Players() {
       <div className="flex items-center gap-3 mb-4">
         <BackButton onClick={() => navigate('/')} />
         <h1 className="text-xl font-bold">Players</h1>
-        <button
-          className="ml-auto bg-green-600 hover:bg-green-500 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5"
-          onClick={() => { setShowAdd(!showAdd); setAddError('') }}
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-          Add Player
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          {isAdmin && (
+            <button
+              className="bg-green-600 hover:bg-green-500 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5"
+              onClick={() => { setShowAdd(!showAdd); setAddError('') }}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              Add
+            </button>
+          )}
+          {user ? (
+            <button
+              onClick={() => signOut()}
+              className="text-xs text-gray-400 hover:text-white bg-gray-700 hover:bg-gray-600 px-2.5 py-1.5 rounded-lg transition-colors"
+              title={`Signed in as ${user.email}`}
+            >
+              🔑 Admin
+            </button>
+          ) : (
+            <button
+              onClick={() => { setShowLoginForm(!showLoginForm); setLoginError('') }}
+              className="text-xs text-gray-400 hover:text-white bg-gray-700 hover:bg-gray-600 px-2.5 py-1.5 rounded-lg transition-colors"
+            >
+              🔑 Sign in
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Admin login form */}
+      {showLoginForm && !user && (
+        <div className="card mb-4">
+          <h2 className="text-sm font-semibold text-gray-300 mb-3">Admin Sign In</h2>
+          <div className="space-y-2 mb-2">
+            <input
+              autoFocus
+              type="email"
+              className="input-field w-full"
+              placeholder="Email"
+              value={loginEmail}
+              onChange={(e) => { setLoginEmail(e.target.value); setLoginError('') }}
+              onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+            />
+            <input
+              type="password"
+              className="input-field w-full"
+              placeholder="Password"
+              value={loginPassword}
+              onChange={(e) => { setLoginPassword(e.target.value); setLoginError('') }}
+              onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+            />
+          </div>
+          <button
+            disabled={loginLoading}
+            onClick={() => { setLoginLoading(true); handleLogin() }}
+            className="btn-primary w-full text-sm disabled:opacity-50"
+          >
+            {loginLoading ? 'Signing in…' : 'Sign In'}
+          </button>
+          {loginError && <p className="text-red-400 text-xs mt-2">{loginError}</p>}
+        </div>
+      )}
 
       {showAdd && (
         <div className="card mb-4">
@@ -300,15 +371,17 @@ export default function Players() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="font-bold text-lg truncate">{player.name}</p>
-                        <button
-                          className="text-gray-500 hover:text-white transition-colors flex-shrink-0 p-1 rounded"
-                          onClick={(e) => startEdit(player.name, e)}
-                          title="Rename player"
-                        >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-1.414.586H8v-2.414a2 2 0 01.586-1.414z" />
-                          </svg>
-                        </button>
+                        {isAdmin && (
+                          <button
+                            className="text-gray-500 hover:text-white transition-colors flex-shrink-0 p-1 rounded"
+                            onClick={(e) => startEdit(player.name, e)}
+                            title="Rename player"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-1.414.586H8v-2.414a2 2 0 01.586-1.414z" />
+                            </svg>
+                          </button>
+                        )}
                       </div>
                       <p className="text-xs text-gray-500">{player.totalMatches} match{player.totalMatches !== 1 ? 'es' : ''} &middot; {rec.wins}W {rec.losses}L</p>
                       {/* Form dots — last 5 results */}
