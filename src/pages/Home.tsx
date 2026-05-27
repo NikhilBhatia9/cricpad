@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useMatchStore } from '../store/matchStore'
+import { isSupabaseConfigured } from '../config/supabase'
 
 export default function Home() {
   const navigate = useNavigate()
@@ -25,6 +26,13 @@ export default function Home() {
           <p className="text-gray-400 text-sm mt-1.5">Live scoring for social cricket</p>
         </div>
       </div>
+
+      {/* Supabase not configured warning */}
+      {!isSupabaseConfigured && (
+        <div className="mx-5 mt-4 bg-yellow-900/40 border border-yellow-700/60 rounded-xl px-4 py-3 text-sm text-yellow-300 text-center">
+          ⚠️ Database not connected — add <strong>VITE_SUPABASE_URL</strong> &amp; <strong>VITE_SUPABASE_ANON_KEY</strong> as GitHub secrets to enable player &amp; match history.
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex-1 px-5 pb-10 pt-5 flex flex-col gap-3 max-w-md mx-auto w-full">
