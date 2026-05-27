@@ -68,6 +68,16 @@ function OverSummary({ over, bowlerName, onContinue }: { over: Over; bowlerName:
   )
 }
 
+function partnershipRunsFrom(innings: Innings): number {
+  const allBalls = innings.overs.flatMap((o) => o.balls)
+  let runs = 0
+  for (let i = allBalls.length - 1; i >= 0; i--) {
+    if (allBalls[i].isWicket) break
+    runs += allBalls[i].runsOffBat + allBalls[i].extras
+  }
+  return runs
+}
+
 export default function Scoring() {
   const navigate = useNavigate()
   const { match, setBatsmen, setBowler, recordBall, undoLastBall, undoHistory } = useMatchStore()
@@ -125,6 +135,21 @@ export default function Scoring() {
             setMilestone({ emoji: '🎯', title: '3-FER!', subtitle: `${curr.name} takes 3 wickets!` })
           } else if (w === 2) {
             setMilestone({ emoji: '🎯', title: 'DOUBLE STRIKE!', subtitle: `${curr.name} takes 2nd wicket!` })
+          }
+          milestoneSet = true
+        }
+      }
+      // Partnership milestones
+      if (!milestoneSet && innings.strikerId && innings.nonStrikerId) {
+        const currP = partnershipRunsFrom(innings)
+        const prevP = partnershipRunsFrom(prev)
+        for (const threshold of [100, 75, 50, 25]) {
+          if (prevP < threshold && currP >= threshold) {
+            const s = innings.batsmen[innings.strikerId]?.name ?? ''
+            const ns = innings.batsmen[innings.nonStrikerId]?.name ?? ''
+            setMilestone({ emoji: '🤝', title: `${threshold} PARTNERSHIP!`, subtitle: `${s} & ${ns}` })
+            milestoneSet = true
+            break
           }
         }
       }
@@ -441,14 +466,12 @@ export default function Scoring() {
   }
 
   // ── Partnership tracker ──
-  // Sum runs + balls since the last wicket ball (or start of innings)
   const allBalls = innings.overs.flatMap((o) => o.balls)
-  let partnershipRuns = 0
+  const partnershipRuns = partnershipRunsFrom(innings)
   let partnershipBalls = 0
   for (let i = allBalls.length - 1; i >= 0; i--) {
     const b = allBalls[i]
     if (b.isWicket) break
-    partnershipRuns += b.runsOffBat + b.extras
     if (b.isLegal) partnershipBalls++
   }
 
