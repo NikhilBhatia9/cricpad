@@ -1,4 +1,4 @@
-import type { Match, Innings } from '../types/cricket'
+import type { Match } from '../types/cricket'
 
 export interface PlayerMvpScore {
   name: string
@@ -35,7 +35,7 @@ export interface PlayerMvpScore {
  *   +10 pts per maiden
  *   +10 pts for 2-wicket haul, +20 pts for 3+
  */
-function calcPoints(p: PlayerMvpScore, totalMatchBalls: number): number {
+function calcPoints(p: PlayerMvpScore): number {
   let pts = 0
 
   // ── Batting ──────────────────────────────────────────────────────────
@@ -91,6 +91,7 @@ export function computeMvp(match: Match): PlayerMvpScore | null {
   const playerMap: Record<string, PlayerMvpScore> = {}
 
   const totalBalls = match.innings.reduce((sum, inn) => sum + (inn?.totalLegalBalls ?? 0), 0)
+  void totalBalls // used implicitly for future fielding metrics
 
   for (const innings of match.innings) {
     if (!innings) continue
@@ -147,7 +148,7 @@ export function computeMvp(match: Match): PlayerMvpScore | null {
   // Calculate points for all players
   const players = Object.values(playerMap).map((p) => ({
     ...p,
-    totalPoints: calcPoints(p, totalBalls),
+    totalPoints: calcPoints(p),
   }))
 
   if (players.length === 0) return null
