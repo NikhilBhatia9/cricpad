@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { supabase } from '../config/supabase'
 import { fetchAllPlayers, fetchPlayerStats, computeCareerBatting, computeCareerBowling } from '../db/operations'
 import type { PlayerRecord, PlayerMatchStat } from '../db/types'
 import BackButton from '../components/BackButton'
@@ -27,7 +28,6 @@ export default function Players() {
   useEffect(() => { loadPlayers() }, [])
 
   async function addPlayer() {
-    const { supabase } = await import('../config/supabase')
     const name = newName.trim()
     if (!name) { setAddError('Enter a name'); return }
     const existing = players?.find((p) => p.name === name)
