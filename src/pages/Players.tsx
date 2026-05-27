@@ -1,9 +1,30 @@
-﻿import { useState, useEffect } from 'react'
+﻿import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../config/supabase'
 import { fetchAllPlayers, fetchPlayerStats, computeCareerBatting, computeCareerBowling } from '../db/operations'
 import type { PlayerRecord, PlayerMatchStat } from '../db/types'
 import BackButton from '../components/BackButton'
+
+type SortKey = 'matches' | 'runs' | 'wickets' | 'maidens' | 'mvps' | 'average' | 'economy' | 'sixes' | 'catches'
+
+const SORT_OPTIONS: { key: SortKey; label: string; icon: string }[] = [
+  { key: 'matches',  label: 'Matches',  icon: '📅' },
+  { key: 'runs',     label: 'Runs',     icon: '🏏' },
+  { key: 'wickets',  label: 'Wickets',  icon: '🎯' },
+  { key: 'maidens',  label: 'Maidens',  icon: '🔇' },
+  { key: 'mvps',     label: 'MVPs',     icon: '⭐' },
+  { key: 'average',  label: 'Avg',      icon: '📈' },
+  { key: 'economy',  label: 'Eco',      icon: '💨' },
+  { key: 'sixes',    label: 'Sixes',    icon: '6️⃣' },
+  { key: 'catches',  label: 'Catches',  icon: '🤲' },
+]
+
+function parseStat(val: string | number, fallback = 0): number {
+  if (typeof val === 'number') return val
+  if (val === '-' || val === '') return fallback
+  if (val === '\u221e') return 9999
+  return parseFloat(val) || fallback
+}
 
 export default function Players() {
   const navigate = useNavigate()
@@ -12,6 +33,7 @@ export default function Players() {
   const [addError, setAddError] = useState('')
   const [players, setPlayers] = useState<PlayerRecord[] | null>(null)
   const [statsMap, setStatsMap] = useState<Record<string, PlayerMatchStat[]>>({})
+  const [sortKey, setSortKey] = useState<SortKey>('matches')
 
   async function loadPlayers() {
     const ps = await fetchAllPlayers()
@@ -40,6 +62,40 @@ export default function Players() {
     loadPlayers()
   }
 
+  const sortedPlayers = useMemo(() => {
+    if (!players) return []
+    return [...players].sort((a, b) => {
+      const sa = statsMap[a.name] ?? []
+      const sb = statsMap[b.name] ?? []
+      const batA = computeCareerBatting(sa)
+      const batB = computeCareerBatting(sb)
+      const bowlA = computeCareerBowling(sa)
+      const bowlB = computeCareerBowling(sb)
+
+      switch (sortKey) {
+        case 'matches':  return b.totalMatches - a.totalMatches
+        case 'runs':     return batB.totalRuns - batA.totalRuns
+        case 'wickets':  return bowlB.wickets - bowlA.wickets
+        case 'maidens':  return bowlB.maidens - bowlA.maidens
+        case 'mvps':     return batB.mvpWins - batA.mvpWins
+        case 'sixes':    return batB.sixes - batA.sixes
+        case 'catches': {
+          const cA = sa.reduce((s, r) => s + (r.fieldCatches ?? 0), 0)
+          const cB = sb.reduce((s, r) => s + (r.fieldCatches ?? 0), 0)
+          return cB - cA
+        }
+        case 'average':  return parseStat(batB.average) - parseStat(batA.average)
+        case 'economy':  {
+          // Lower economy is better — put '-' (no bowling) last
+          const eA = parseStat(bowlA.economy, 9999)
+          const eB = parseStat(bowlB.economy, 9999)
+          return eA - eB
+        }
+        default: return 0
+      }
+    })
+  }, [players, statsMap, sortKey])
+
   if (!players) {
     return (
       <div className="flex flex-col min-h-screen px-6 py-12 items-center justify-center">
@@ -50,7 +106,7 @@ export default function Players() {
 
   return (
     <div className="px-4 py-6 max-w-lg mx-auto">
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-4">
         <BackButton onClick={() => navigate('/')} />
         <h1 className="text-xl font-bold">Players</h1>
         <button
@@ -87,6 +143,28 @@ export default function Players() {
         </div>
       )}
 
+      {/* Sort chips */}
+      {players.length > 0 && (
+        <div className="mb-4 -mx-1">
+          <div className="flex gap-2 overflow-x-auto pb-1 px-1 scrollbar-hide">
+            {SORT_OPTIONS.map(({ key, label, icon }) => (
+              <button
+                key={key}
+                onClick={() => setSortKey(key)}
+                className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                  sortKey === key
+                    ? 'bg-green-600 text-white'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                <span>{icon}</span>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {players.length === 0 && !showAdd && (
         <div className="flex flex-col items-center justify-center gap-4 text-center py-16">
           <div className="text-5xl">&#x1F3CF;</div>
@@ -95,7 +173,7 @@ export default function Players() {
       )}
 
       <div className="space-y-3">
-        {players.map((player) => {
+        {sortedPlayers.map((player) => {
           const stats = statsMap[player.name] ?? []
           const bat = computeCareerBatting(stats)
           const bowl = computeCareerBowling(stats)
@@ -110,7 +188,12 @@ export default function Players() {
                   <p className="font-bold text-lg">{player.name}</p>
                   <p className="text-xs text-gray-500">{player.totalMatches} match{player.totalMatches !== 1 ? 'es' : ''}</p>
                 </div>
-                <span className="text-2xl">&#x1F9D1;&#x200D;&#x1F3CF;</span>
+                <div className="text-right">
+                  <span className="text-2xl">&#x1F9D1;&#x200D;&#x1F3CF;</span>
+                  {bat.mvpWins > 0 && (
+                    <p className="text-xs text-yellow-400 font-semibold mt-0.5">&#x2B50; MVP x{bat.mvpWins}</p>
+                  )}
+                </div>
               </div>
               {(bat.innings > 0 || bowl.wickets > 0) && (
                 <div className="grid grid-cols-2 gap-2 mt-3">

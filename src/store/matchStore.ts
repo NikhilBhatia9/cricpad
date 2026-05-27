@@ -178,9 +178,20 @@ export const useMatchStore = create<MatchStore>()(
             striker.bowledBy = bowler.name
             if (ball.fielderName) striker.fielderName = ball.fielderName
           } else if (ball.isWicket && ball.wicketType === 'Run Out') {
-            striker.isOut = true
-            striker.wicketType = ball.wicketType
-            if (ball.fielderName) striker.fielderName = ball.fielderName
+            if (!ball.runOutNonStriker) {
+              // Striker was run out
+              striker.isOut = true
+              striker.wicketType = 'Run Out'
+              if (ball.fielderName) striker.fielderName = ball.fielderName
+            } else if (innings.nonStrikerId && batsmen[innings.nonStrikerId]) {
+              // Non-striker was run out — mark them out, leave striker untouched
+              batsmen[innings.nonStrikerId] = {
+                ...batsmen[innings.nonStrikerId],
+                isOut: true,
+                wicketType: 'Run Out',
+                fielderName: ball.fielderName,
+              }
+            }
           }
           batsmen[ball.strikerId] = striker
 
@@ -251,8 +262,9 @@ export const useMatchStore = create<MatchStore>()(
             bowlers,
             fielders,
             extras,
-            strikerId: ball.isWicket ? null : strikerId,
-            nonStrikerId: ball.isWicket ? nonStrikerId : nonStrikerId,
+            // For non-striker run out: striker stays on, non-striker slot empties for replacement
+            strikerId: (ball.isWicket && !ball.runOutNonStriker) ? null : strikerId,
+            nonStrikerId: (ball.isWicket && ball.runOutNonStriker) ? null : nonStrikerId,
             totalRuns: newRuns,
             totalWickets: newWickets,
             totalLegalBalls: newLegalBalls,

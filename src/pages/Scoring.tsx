@@ -78,6 +78,8 @@ export default function Scoring() {
   const [showNewBatsman, setShowNewBatsman] = useState(false)
   const [pendingWicketType, setPendingWicketType] = useState<WicketType | null>(null)
   const [showFielderSelect, setShowFielderSelect] = useState(false)
+  const [showRunOutVictim, setShowRunOutVictim] = useState(false)
+  const [runOutNonStriker, setRunOutNonStriker] = useState(false)
   const [overSummaryDismissed, setOverSummaryDismissed] = useState(-1)
 
   if (!match) return <div className="p-6 text-center">No match. <button onClick={() => navigate('/')} className="text-green-400">Go home</button></div>
@@ -154,7 +156,10 @@ export default function Scoring() {
 
   function handleWicketType(type: WicketType) {
     setShowWicketModal(false)
-    if (FIELDER_WICKETS.includes(type)) {
+    if (type === 'Run Out') {
+      setPendingWicketType(type)
+      setShowRunOutVictim(true)
+    } else if (FIELDER_WICKETS.includes(type)) {
       setPendingWicketType(type)
       setShowFielderSelect(true)
     } else {
@@ -174,31 +179,41 @@ export default function Scoring() {
       strikerId: innings!.strikerId!,
       bowlerId: innings!.bowlerId!,
       isLegal: true,
+      runOutNonStriker: type === 'Run Out' ? runOutNonStriker : false,
     })
     setPendingWicketType(null)
     setShowFielderSelect(false)
+    setRunOutNonStriker(false)
     setShowNewBatsman(true)
   }
 
   // ── 1. New batsman after wicket ──
   if (showNewBatsman) {
+    // Determine which position needs filling
+    const strikerDismissed = innings.strikerId === null
+    const stayingPlayerId = strikerDismissed ? (innings.nonStrikerId ?? '') : (innings.strikerId ?? '')
     const alreadyOut = Object.keys(innings.batsmen).filter((id) => innings.batsmen[id].isOut)
     const available = battingTeam.players.filter(
-      (p) => !alreadyOut.includes(p.id) && p.id !== innings.nonStrikerId && !batsmanExcludeShared.includes(p.id)
+      (p) => !alreadyOut.includes(p.id) && p.id !== stayingPlayerId && !batsmanExcludeShared.includes(p.id)
     )
 
-    // Last man standing — no new batsman to bring in, non-striker bats alone
-    if (available.length === 0 && innings.nonStrikerId) {
+    // No replacement available — last batsman scenario
+    if (available.length === 0) {
+      const lastManName = strikerDismissed
+        ? innings.batsmen[innings.nonStrikerId ?? '']?.name ?? 'Last player'
+        : innings.batsmen[innings.strikerId ?? '']?.name ?? 'Last player'
       return (
         <div className="flex flex-col min-h-screen items-center justify-center px-6 text-center">
           <div className="text-5xl mb-3">&#x1F3CF;</div>
           <h2 className="text-xl font-bold mb-2">Last Batsman</h2>
-          <p className="text-gray-400 mb-6">
-            {innings.batsmen[innings.nonStrikerId]?.name ?? 'Last player'} is the last batsman remaining.
-          </p>
+          <p className="text-gray-400 mb-6">{lastManName} is the last batsman remaining.</p>
           <button
             className="btn-primary"
-            onClick={() => { setBatsmen(innings.nonStrikerId!, ''); setShowNewBatsman(false) }}
+            onClick={() => {
+              if (strikerDismissed && innings.nonStrikerId) setBatsmen(innings.nonStrikerId!, '')
+              // Non-striker dismissed: strikerId already set, nonStrikerId already null — no update needed
+              setShowNewBatsman(false)
+            }}
           >
             Continue &rarr;
           </button>
@@ -210,20 +225,52 @@ export default function Scoring() {
       <PlayerSelector
         title="New Batsman"
         players={battingTeam.players}
-        exclude={[
-          ...alreadyOut,
-          innings.nonStrikerId ?? '',
-          ...batsmanExcludeShared,
-        ]}
+        exclude={[...alreadyOut, stayingPlayerId, ...batsmanExcludeShared]}
         onSelect={(id) => {
-          setBatsmen(id, innings.nonStrikerId ?? '')
+          if (strikerDismissed) {
+            setBatsmen(id, innings.nonStrikerId ?? '')
+          } else {
+            // Non-striker was run out — new batsman goes to non-striker end
+            setBatsmen(innings.strikerId!, id)
+          }
           setShowNewBatsman(false)
         }}
       />
     )
   }
 
-  // ── 2. Fielder selection ──
+  // ── 2. Run out victim selection ──
+  if (showRunOutVictim && pendingWicketType === 'Run Out') {
+    return (
+      <div className="flex flex-col min-h-screen px-4 py-6 max-w-lg mx-auto">
+        <h2 className="text-xl font-bold mb-2 text-center text-red-400">&#x26A1; Run Out! Who is out?</h2>
+        <p className="text-gray-400 text-sm text-center mb-6">Select the batsman who was run out</p>
+        <div className="space-y-3 mb-4">
+          <button
+            onClick={() => { setRunOutNonStriker(false); setShowRunOutVictim(false); setShowFielderSelect(true) }}
+            className="w-full bg-gray-700 hover:bg-gray-600 text-white font-semibold py-5 rounded-2xl text-lg transition-colors"
+          >
+            &#x26A1; {striker?.name ?? 'Striker'}
+            <span className="block text-xs text-gray-400 font-normal mt-1">on strike</span>
+          </button>
+          {nonStriker && (
+            <button
+              onClick={() => { setRunOutNonStriker(true); setShowRunOutVictim(false); setShowFielderSelect(true) }}
+              className="w-full bg-gray-700 hover:bg-gray-600 text-white font-semibold py-5 rounded-2xl text-lg transition-colors"
+            >
+              &#x26A1; {nonStriker.name}
+              <span className="block text-xs text-gray-400 font-normal mt-1">non-striker</span>
+            </button>
+          )}
+        </div>
+        <button className="btn-secondary" onClick={() => { setShowRunOutVictim(false); setPendingWicketType(null) }}>
+          Cancel
+        </button>
+      </div>
+    )
+  }
+
+  // ── 3. Fielder selection ──
   if (showFielderSelect && pendingWicketType) {
     const fielderIcon = pendingWicketType === 'Caught' ? '\uD83D\uDC50' : pendingWicketType === 'Stumped' ? '\uD83E\uDDE4' : '\u26A1'
     const fielderTitle = pendingWicketType === 'Caught' ? `${fielderIcon} Who caught it?` :

@@ -27,6 +27,8 @@ export interface BallEvent {
   bowlerId: string
   /** false for wides/noballs — ball not counted in over */
   isLegal: boolean
+  /** true when the non-striker (not the striker) is the one run out */
+  runOutNonStriker?: boolean
 }
 
 export interface Over {
