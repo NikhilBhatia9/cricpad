@@ -228,10 +228,11 @@ export const useMatchStore = create<MatchStore>()(
 
           // Swap striker on odd runs (off bat only) or end of over.
           // Guard: only swap when there IS a non-striker (last-batsman mode skips swaps).
+          // No-balls are not legal but batsmen still cross ends when they run.
           let { strikerId, nonStrikerId } = innings
           const endOfOver = ball.isLegal && newLegalBalls % 6 === 0
 
-          if (nonStrikerId && ball.isLegal && !ball.isWicket) {
+          if (nonStrikerId && (ball.isLegal || ball.extraType === 'noball') && !ball.isWicket) {
             if (ball.runsOffBat % 2 === 1) {
               ;[strikerId, nonStrikerId] = [nonStrikerId, strikerId]
             }

@@ -163,6 +163,20 @@ export default function Scoring() {
     return () => clearTimeout(t)
   }, [milestone])
 
+  // B-05: Guard browser back button during live match
+  useEffect(() => {
+    window.history.pushState(null, '', window.location.href)
+    const handlePop = () => {
+      if (window.confirm('Leave this match? Your progress is saved.')) {
+        navigate('/')
+      } else {
+        window.history.pushState(null, '', window.location.href)
+      }
+    }
+    window.addEventListener('popstate', handlePop)
+    return () => window.removeEventListener('popstate', handlePop)
+  }, [navigate])
+
   if (!match) return <div className="p-6 text-center">No match. <button onClick={() => navigate('/')} className="text-green-400">Go home</button></div>
 
   const idx = match.currentInningsIndex
@@ -216,6 +230,12 @@ export default function Scoring() {
     ? innings.overs[innings.overs.length - 1].bowlerId
     : null
 
+  // B-03: Wrap undo so over-summary state is reset too
+  function handleUndo() {
+    undoLastBall()
+    setOverSummaryDismissed(-1)
+  }
+
   function recordRuns(runs: number) {
     if (!innings!.strikerId || !innings!.bowlerId) return
     const extra = pendingExtra
@@ -250,18 +270,22 @@ export default function Scoring() {
 
   function commitWicket(type: WicketType, fielderId: string | undefined, fielderName: string | undefined) {
     if (!innings!.strikerId || !innings!.bowlerId) return
+    // B-02: if a no-ball was pending, carry the 1-run penalty and mark not legal
+    const isNoBall = pendingExtra === 'noball'
     recordBall({
       runsOffBat: 0,
-      extras: 0,
+      extras: isNoBall ? 1 : 0,
+      extraType: isNoBall ? 'noball' : undefined,
       isWicket: true,
       wicketType: type,
       fielderId,
       fielderName,
       strikerId: innings!.strikerId!,
       bowlerId: innings!.bowlerId!,
-      isLegal: true,
+      isLegal: !isNoBall,
       runOutNonStriker: type === 'Run Out' ? runOutNonStriker : false,
     })
+    setPendingExtra(null)
     setPendingWicketType(null)
     setShowFielderSelect(false)
     setRunOutNonStriker(false)
@@ -324,7 +348,14 @@ export default function Scoring() {
         exclude={[...alreadyOut, stayingPlayerId, ...batsmanExcludeShared]}
         onSelect={(id) => {
           if (strikerDismissed) {
-            setBatsmen(id, innings.nonStrikerId ?? '')
+            // B-04: wicket on last ball of over → non-striker crosses and faces;
+            // new batsman comes in at far end (non-striker slot)
+            const isEndOfOver = innings.totalLegalBalls > 0 && innings.totalLegalBalls % 6 === 0
+            if (isEndOfOver && innings.nonStrikerId) {
+              setBatsmen(innings.nonStrikerId, id)
+            } else {
+              setBatsmen(id, innings.nonStrikerId ?? '')
+            }
           } else {
             // Non-striker was run out — new batsman goes to non-striker end
             setBatsmen(innings.strikerId!, id)
@@ -446,11 +477,16 @@ export default function Scoring() {
 
   // ── 6. Wicket type modal ──
   if (showWicketModal) {
+    // B-02: on a no-ball only Run Out is a valid dismissal
+    const validWicketTypes = pendingExtra === 'noball' ? (['Run Out'] as WicketType[]) : WICKET_TYPES
     return (
       <div className="flex flex-col min-h-screen px-4 py-6">
-        <h2 className="text-xl font-bold mb-6 text-center text-red-400">Wicket! How out?</h2>
-        <div className="grid grid-cols-2 gap-3">
-          {WICKET_TYPES.map((t) => (
+        <h2 className="text-xl font-bold mb-2 text-center text-red-400">Wicket! How out?</h2>
+        {pendingExtra === 'noball' && (
+          <p className="text-yellow-400 text-xs text-center mb-4">No Ball — only Run Out is valid</p>
+        )}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          {validWicketTypes.map((t) => (
             <button
               key={t}
               onClick={() => handleWicketType(t)}
@@ -630,7 +666,7 @@ export default function Scoring() {
       {/* Footer actions */}
       <div className="px-4 pb-6 flex gap-3 mt-auto pt-2">
         <button
-          onClick={undoLastBall}
+          onClick={handleUndo}
           disabled={undoHistory.length === 0}
           className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-colors ${
             undoHistory.length > 0

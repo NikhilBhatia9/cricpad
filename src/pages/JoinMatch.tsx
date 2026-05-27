@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMatchStore } from '../store/matchStore'
 import { subscribeToRoom } from '../services/matchSync'
@@ -13,6 +13,12 @@ export default function JoinMatch() {
   const [code, setCode] = useState(searchParams.get('code') ?? '')
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // B-06: clear timeout on unmount to avoid state update on unmounted component
+  useEffect(() => {
+    return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current) }
+  }, [])
 
   // Auto-join if code is in URL
   useEffect(() => {
@@ -54,7 +60,7 @@ export default function JoinMatch() {
     })
 
     // Timeout if no response after 5s
-    setTimeout(() => {
+    timeoutRef.current = setTimeout(() => {
       if (status === 'loading') {
         unsub()
         setErrorMsg('Room not found. Check the code and try again.')
