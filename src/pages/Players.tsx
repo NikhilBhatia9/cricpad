@@ -50,19 +50,22 @@ export default function Players() {
   const [editSaving, setEditSaving] = useState(false)
 
   async function loadPlayers() {
-    const ps = await fetchAllPlayers()
-    setPlayers(ps)
-    const map: Record<string, PlayerMatchStat[]> = {}
-    await Promise.all(
-      ps.map(async (p) => {
-        map[p.name] = await fetchPlayerStats(p.name)
-      })
-    )
-    setStatsMap(map)
-    // Collect all unique match IDs across all players and fetch results once
-    const allMatchIds = [...new Set(Object.values(map).flat().map((s) => s.matchId))]
-    const results = await fetchMatchResultsMap(allMatchIds)
-    setMatchResults(results)
+    try {
+      const ps = await fetchAllPlayers()
+      setPlayers(ps)
+      const map: Record<string, PlayerMatchStat[]> = {}
+      await Promise.all(
+        ps.map(async (p) => {
+          map[p.name] = await fetchPlayerStats(p.name)
+        })
+      )
+      setStatsMap(map)
+      const allMatchIds = [...new Set(Object.values(map).flat().map((s) => s.matchId))]
+      const results = await fetchMatchResultsMap(allMatchIds)
+      setMatchResults(results)
+    } catch {
+      setPlayers([]) // ensure UI renders even if Supabase is unreachable
+    }
   }
 
   useEffect(() => { loadPlayers() }, [])
