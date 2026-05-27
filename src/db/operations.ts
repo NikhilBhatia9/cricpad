@@ -159,7 +159,7 @@ export async function saveMatch(match: Match): Promise<void> {
 
   // Compute MVP
   const mvp = computeMvp(match)
-  const mvpName = mvp?.player.name ?? null
+  const mvpName = mvp?.name ?? null
 
   for (const innings of match.innings) {
     if (!innings) continue
