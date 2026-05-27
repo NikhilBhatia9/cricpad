@@ -5,6 +5,7 @@ import type { MatchRecord } from '../db/types'
 import type { Match } from '../types/cricket'
 import { scoreString, oversDisplay } from '../utils/cricket'
 import BackButton from '../components/BackButton'
+import { computeMvp, mvpNarrative } from '../utils/mvp'
 
 export default function MatchHistory() {
   const navigate = useNavigate()
@@ -97,6 +98,7 @@ function MatchDetail({ matchId, onBack }: { matchId: string; onBack: () => void 
   const match: Match = JSON.parse(matchRecord.snapshot)
   const i1 = match.innings[0]
   const i2 = match.innings[1]
+  const mvp = computeMvp(match)
 
   return (
     <div className="px-4 py-6 max-w-lg mx-auto pb-10">
@@ -109,6 +111,30 @@ function MatchDetail({ matchId, onBack }: { matchId: string; onBack: () => void 
         <p className="text-sm text-gray-400">{match.maxOvers} overs</p>
         {matchRecord.result && <p className="text-lg font-bold text-green-400 mt-2">{matchRecord.result}</p>}
       </div>
+
+      {/* MVP Card */}
+      {mvp && (
+        <div className="mb-4 rounded-2xl p-4 border border-yellow-500/40" style={{ background: 'linear-gradient(135deg, #78350f33 0%, #92400e33 50%, #78350f33 100%)' }}>
+          <div className="flex items-center gap-3">
+            <div className="text-3xl">&#x1F3C6;</div>
+            <div className="flex-1">
+              <p className="text-xs text-yellow-400 font-semibold uppercase tracking-wide">Player of the Match</p>
+              <button
+                className="text-lg font-bold text-yellow-300 hover:text-yellow-200"
+                onClick={() => navigate(`/players/${encodeURIComponent(mvp.name)}`)}
+              >
+                {mvp.name}
+              </button>
+              <p className="text-xs text-yellow-500/80">{mvp.teamName}</p>
+            </div>
+            <div className="text-right text-xs text-yellow-400/80 space-y-0.5">
+              {mvp.batDidBat && <p>&#x1F3CF; {mvp.batRuns} ({mvp.batBalls}b)</p>}
+              {mvp.bowlDidBowl && <p>&#x1F3AF; {mvp.bowlWickets}w/{mvp.bowlRunsConceded}</p>}
+            </div>
+          </div>
+          <p className="text-xs text-yellow-500/70 mt-2 italic">{mvpNarrative(mvp)}</p>
+        </div>
+      )}
 
       {[i1, i2].map((inn, innIdx) => {
         if (!inn) return null

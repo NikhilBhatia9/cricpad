@@ -51,6 +51,19 @@ export default function PlayerDetail() {
   const field = computeCareerFielding(stats)
   const matchIds = [...new Set(stats.map((s) => s.matchId))]
 
+  // Win / Loss / Tie per match
+  const record = playerMatches.reduce(
+    (acc, m) => {
+      const playerStat = stats.find((s) => s.matchId === m.id)
+      if (!playerStat || !m.result) return acc
+      const r = m.result.toLowerCase()
+      if (r.includes('tied') || r.includes('tie')) return { ...acc, ties: acc.ties + 1 }
+      if (m.result.startsWith(playerStat.teamName)) return { ...acc, wins: acc.wins + 1 }
+      return { ...acc, losses: acc.losses + 1 }
+    },
+    { wins: 0, losses: 0, ties: 0 }
+  )
+
   return (
     <div className="px-4 py-6 max-w-lg mx-auto pb-10">
       <div className="flex items-center gap-3 mb-6">
@@ -62,6 +75,33 @@ export default function PlayerDetail() {
         <div className="text-5xl mb-2">&#x1F3CF;</div>
         <h1 className="text-2xl font-bold">{player.name}</h1>
         <p className="text-gray-400 text-sm mt-1">{matchIds.length} match{matchIds.length !== 1 ? 'es' : ''} played</p>
+
+        {/* W / L / T record */}
+        {matchIds.length > 0 && (
+          <div className="flex justify-center gap-3 mt-3">
+            <div className="bg-green-500/20 border border-green-500/40 rounded-xl px-4 py-2 min-w-[60px]">
+              <p className="text-xs text-green-400 font-semibold">WON</p>
+              <p className="text-2xl font-bold text-green-400">{record.wins}</p>
+            </div>
+            <div className="bg-red-500/20 border border-red-500/40 rounded-xl px-4 py-2 min-w-[60px]">
+              <p className="text-xs text-red-400 font-semibold">LOST</p>
+              <p className="text-2xl font-bold text-red-400">{record.losses}</p>
+            </div>
+            {record.ties > 0 && (
+              <div className="bg-yellow-500/20 border border-yellow-500/40 rounded-xl px-4 py-2 min-w-[60px]">
+                <p className="text-xs text-yellow-400 font-semibold">TIED</p>
+                <p className="text-2xl font-bold text-yellow-400">{record.ties}</p>
+              </div>
+            )}
+            <div className="bg-blue-500/20 border border-blue-500/40 rounded-xl px-4 py-2 min-w-[60px]">
+              <p className="text-xs text-blue-400 font-semibold">WIN%</p>
+              <p className="text-2xl font-bold text-blue-400">
+                {matchIds.length > 0 ? Math.round((record.wins / matchIds.length) * 100) : 0}
+              </p>
+            </div>
+          </div>
+        )}
+
         {bat.mvpWins > 0 && (
           <div className="mt-3 inline-flex items-center gap-2 bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 px-4 py-1.5 rounded-full text-sm font-semibold">
             &#x1F3C6; MVP &times; {bat.mvpWins}
