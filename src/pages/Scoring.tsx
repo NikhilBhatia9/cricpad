@@ -100,7 +100,7 @@ export default function Scoring() {
   const overBalls = currentOverBalls(currentOver)
   const overNum = Math.floor(innings.totalLegalBalls / 6) + 1
 
-  const needsBatsmen = !innings.strikerId || !innings.nonStrikerId
+  const needsBatsmen = !innings.strikerId && !innings.nonStrikerId
   const needsBowler = !innings.bowlerId
   const isNewOver = innings.totalLegalBalls > 0 &&
     innings.totalLegalBalls % 6 === 0 &&
