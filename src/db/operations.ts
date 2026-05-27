@@ -243,7 +243,7 @@ export function computeCareerBatting(stats: PlayerMatchStat[]): CareerBatting {
     hundreds: bat.filter((s) => s.batRuns >= 100).length,
     fours: bat.reduce((sum, s) => sum + s.batFours, 0),
     sixes: bat.reduce((sum, s) => sum + s.batSixes, 0),
-    mvpWins: stats.filter((s) => s.isMvp).length,
+    mvpWins: new Set(stats.filter((s) => s.isMvp).map((s) => s.matchId)).size,
   }
 }
 
