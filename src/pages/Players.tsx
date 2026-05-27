@@ -100,7 +100,7 @@ export default function Players() {
     setEditError('')
   }
 
-
+  const sortedPlayers = useMemo(() => {
     if (!players) return []
     return [...players].sort((a, b) => {
       const sa = statsMap[a.name] ?? []
