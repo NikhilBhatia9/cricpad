@@ -10,12 +10,14 @@ import PlayerDetail from './pages/PlayerDetail'
 import MatchHistory from './pages/MatchHistory'
 import JoinMatch from './pages/JoinMatch'
 import SyncManager from './components/SyncManager'
+import { useTheme } from './hooks/useTheme'
 
 export default function App() {
+  useTheme()
   return (
     <BrowserRouter basename="/social-cricket-scorer">
       <SyncManager />
-      <div className="min-h-screen bg-gray-900 text-white font-sans">
+      <div className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-white font-sans">
         <Routes>
           <Route path="/"                  element={<Home />} />
           <Route path="/setup"             element={<MatchSetup />} />

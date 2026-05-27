@@ -1,8 +1,8 @@
-﻿import { useState } from 'react'
+﻿import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMatchStore } from '../store/matchStore'
 import { oversDisplay, runRate, requiredRunRate, currentOverBalls, ballColorClass } from '../utils/cricket'
-import type { WicketType, ExtraType, Over } from '../types/cricket'
+import type { WicketType, ExtraType, Over, Innings } from '../types/cricket'
 import PlayerSelector from '../components/PlayerSelector'
 import ShareMatchModal from '../components/ShareMatchModal'
 
@@ -81,6 +81,62 @@ export default function Scoring() {
   const [showRunOutVictim, setShowRunOutVictim] = useState(false)
   const [runOutNonStriker, setRunOutNonStriker] = useState(false)
   const [overSummaryDismissed, setOverSummaryDismissed] = useState(-1)
+  const [milestone, setMilestone] = useState<{ emoji: string; title: string; subtitle: string } | null>(null)
+  const prevInningsRef = useRef<Innings | null>(null)
+
+  useEffect(() => {
+    if (!match) return
+    const inningsIdx = match.currentInningsIndex
+    const innings = match.innings[inningsIdx]
+    if (!innings) return
+    const prev = prevInningsRef.current
+    if (prev && innings !== prev) {
+      let milestoneSet = false
+      // Batting milestones
+      if (innings.strikerId) {
+        const curr = innings.batsmen[innings.strikerId]
+        const prevBat = (prev.batsmen as Record<string, typeof curr | undefined>)[innings.strikerId]
+        if (curr && prevBat && !curr.isOut) {
+          const p = prevBat.runs
+          const c = curr.runs
+          if (p < 100 && c >= 100) {
+            setMilestone({ emoji: '💯', title: 'CENTURY!', subtitle: `${curr.name} reaches 100!` })
+            milestoneSet = true
+          } else if (p < 50 && c >= 50) {
+            setMilestone({ emoji: '🔥', title: 'HALF CENTURY!', subtitle: `${curr.name} reaches 50!` })
+            milestoneSet = true
+          } else if (p < 25 && c >= 25) {
+            setMilestone({ emoji: '⭐', title: '25 UP!', subtitle: `${curr.name} reaches 25!` })
+            milestoneSet = true
+          }
+        }
+      }
+      // Bowling milestones
+      if (!milestoneSet && innings.bowlerId) {
+        const curr = innings.bowlers[innings.bowlerId]
+        const prevBowl = (prev.bowlers as Record<string, typeof curr | undefined>)[innings.bowlerId]
+        if (curr && prevBowl && curr.wickets > prevBowl.wickets) {
+          const w = curr.wickets
+          if (w >= 5) {
+            setMilestone({ emoji: '🎳', title: `${w}-FER!`, subtitle: `${curr.name} takes ${w} wickets!` })
+          } else if (w === 4) {
+            setMilestone({ emoji: '🎯', title: '4-FER!', subtitle: `${curr.name} takes 4 wickets!` })
+          } else if (w === 3) {
+            setMilestone({ emoji: '🎯', title: '3-FER!', subtitle: `${curr.name} takes 3 wickets!` })
+          } else if (w === 2) {
+            setMilestone({ emoji: '🎯', title: 'DOUBLE STRIKE!', subtitle: `${curr.name} takes 2nd wicket!` })
+          }
+        }
+      }
+    }
+    prevInningsRef.current = innings
+  }, [match])
+
+  useEffect(() => {
+    if (!milestone) return
+    const t = setTimeout(() => setMilestone(null), 3000)
+    return () => clearTimeout(t)
+  }, [milestone])
 
   if (!match) return <div className="p-6 text-center">No match. <button onClick={() => navigate('/')} className="text-green-400">Go home</button></div>
 
@@ -185,6 +241,21 @@ export default function Scoring() {
     setShowFielderSelect(false)
     setRunOutNonStriker(false)
     setShowNewBatsman(true)
+  }
+
+  // ── Milestone celebration overlay ──
+  if (milestone) {
+    return (
+      <div
+        className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90 text-center px-8"
+        onClick={() => setMilestone(null)}
+      >
+        <div className="text-8xl mb-5 animate-bounce">{milestone.emoji}</div>
+        <h2 className="text-4xl font-extrabold text-white mb-2 tracking-tight">{milestone.title}</h2>
+        <p className="text-gray-300 text-lg">{milestone.subtitle}</p>
+        <p className="text-gray-500 text-sm mt-8">Tap to continue</p>
+      </div>
+    )
   }
 
   // ── 1. New batsman after wicket ──

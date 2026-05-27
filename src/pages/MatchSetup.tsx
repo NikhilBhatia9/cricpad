@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { v4 as uuidv4 } from 'uuid'
 import { useMatchStore } from '../store/matchStore'
 import type { Team, Player } from '../types/cricket'
-import { fetchAllPlayers } from '../db/operations'
+import { fetchAllPlayers, fetchPlayerStats, fetchMatchResultsMap } from '../db/operations'
+import type { PlayerMatchStat } from '../db/types'
 import BackButton from '../components/BackButton'
 
 type Assignment = 'A' | 'B' | 'both'
@@ -23,10 +24,31 @@ export default function MatchSetup() {
   const [pool, setPool] = useState<string[]>([])
   const [assignments, setAssignments] = useState<Record<string, Assignment>>({})
   const [newName, setNewName] = useState('')
+  const [statsMap, setStatsMap] = useState<Record<string, PlayerMatchStat[]>>({})
+  const [matchResults, setMatchResults] = useState<Record<string, string>>({})
 
   useEffect(() => {
     fetchAllPlayers()
-      .then((ps) => setPool(ps.map((p) => p.name)))
+      .then((ps) => {
+        const names = ps.map((p) => p.name)
+        setPool(names)
+        return names
+      })
+      .then((names) =>
+        Promise.all(names.map((n) => fetchPlayerStats(n).then((s) => ({ name: n, stats: s }))))
+      )
+      .then((results) => {
+        const map: Record<string, PlayerMatchStat[]> = {}
+        const allIds: string[] = []
+        results.forEach(({ name, stats }) => {
+          map[name] = stats
+          stats.forEach((s) => { if (!allIds.includes(s.matchId)) allIds.push(s.matchId) })
+        })
+        setStatsMap(map)
+        return fetchMatchResultsMap(allIds)
+      })
+      .then((results) => setMatchResults(results))
+      .catch(() => {})
   }, [])
 
   const teamAPlayers = pool.filter((n) => assignments[n] === 'A' || assignments[n] === 'both')
@@ -170,6 +192,8 @@ export default function MatchSetup() {
                     teamALabel={teamAName || 'Team A'}
                     teamBLabel={teamBName || 'Team B'}
                     onToggle={toggle}
+                    stats={statsMap[name] ?? []}
+                    matchResults={matchResults}
                   />
                 ))}
               </div>
@@ -189,6 +213,8 @@ export default function MatchSetup() {
                     teamALabel={teamAName || 'Team A'}
                     teamBLabel={teamBName || 'Team B'}
                     onToggle={toggle}
+                    stats={statsMap[name] ?? []}
+                    matchResults={matchResults}
                   />
                 ))}
               </div>
@@ -210,6 +236,8 @@ export default function MatchSetup() {
                     teamALabel={teamAName || 'Team A'}
                     teamBLabel={teamBName || 'Team B'}
                     onToggle={toggle}
+                    stats={statsMap[name] ?? []}
+                    matchResults={matchResults}
                   />
                 ))}
               </div>
@@ -231,6 +259,8 @@ export default function MatchSetup() {
                     teamALabel={teamAName || 'Team A'}
                     teamBLabel={teamBName || 'Team B'}
                     onToggle={toggle}
+                    stats={statsMap[name] ?? []}
+                    matchResults={matchResults}
                   />
                 ))}
               </div>
@@ -247,23 +277,50 @@ export default function MatchSetup() {
 }
 
 function PlayerRow({
-  name, assigned, teamALabel, teamBLabel, onToggle,
+  name, assigned, teamALabel, teamBLabel, onToggle, stats = [], matchResults = {},
 }: {
   name: string
   assigned: Assignment | undefined
   teamALabel: string
   teamBLabel: string
   onToggle: (name: string, team: 'A' | 'B') => void
+  stats?: PlayerMatchStat[]
+  matchResults?: Record<string, string>
 }) {
   const inA = assigned === 'A' || assigned === 'both'
   const inB = assigned === 'B' || assigned === 'both'
+
+  // Compute last 5 form dots
+  const sortedStats = [...stats].sort((a, b) => a.matchDate.localeCompare(b.matchDate))
+  const uniqueMatchIds = [...new Set(sortedStats.map((s) => s.matchId))].slice(-5)
+  const formDots = uniqueMatchIds.map((matchId) => {
+    const result = matchResults[matchId] ?? ''
+    const stat = stats.find((s) => s.matchId === matchId)
+    if (!stat || !result) return 'unknown'
+    const r = result.toLowerCase()
+    if (r.includes('tied') || r.includes('tie')) return 'tie'
+    return result.startsWith(stat.teamName) ? 'win' : 'loss'
+  })
+
   return (
     <div className={`flex items-center gap-2 rounded-lg px-3 py-2 ${
       assigned === 'both' ? 'bg-yellow-900/30 border border-yellow-700/40' : 'bg-gray-800'
     }`}>
-      <span className="flex-1 text-sm font-medium truncate">
+      <span className="flex-1 text-sm font-medium truncate flex items-center gap-1.5">
         {name}
-        {assigned === 'both' && <span className="ml-2 text-xs text-yellow-400 font-normal">shared</span>}
+        {assigned === 'both' && <span className="text-xs text-yellow-400 font-normal">shared</span>}
+        {formDots.length > 0 && (
+          <span className="flex gap-0.5 ml-1">
+            {formDots.map((d, i) => (
+              <span
+                key={i}
+                className={`w-2 h-2 rounded-full inline-block ${
+                  d === 'win' ? 'bg-green-500' : d === 'loss' ? 'bg-red-500' : d === 'tie' ? 'bg-yellow-500' : 'bg-gray-600'
+                }`}
+              />
+            ))}
+          </span>
+        )}
       </span>
       <button
         onClick={() => onToggle(name, 'A')}

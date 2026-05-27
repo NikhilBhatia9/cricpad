@@ -1,10 +1,12 @@
 import { useNavigate } from 'react-router-dom'
 import { useMatchStore } from '../store/matchStore'
 import { isSupabaseConfigured } from '../config/supabase'
+import { useTheme } from '../hooks/useTheme'
 
 export default function Home() {
   const navigate = useNavigate()
   const { match, resetMatch } = useMatchStore()
+  const { dark, toggle } = useTheme()
 
   const hasActiveMatch = match && match.status !== 'complete'
 
@@ -16,14 +18,22 @@ export default function Home() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-900">
+    <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Hero */}
-      <div className="relative overflow-hidden px-6 pt-16 pb-10 text-center bg-gradient-to-b from-green-950/60 to-gray-900">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(22,163,74,0.15),transparent_70%)]" />
+      <div className="relative overflow-hidden px-6 pt-16 pb-10 text-center bg-gradient-to-b from-green-900/20 to-gray-50 dark:from-green-950/60 dark:to-gray-900">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(22,163,74,0.10),transparent_70%)] dark:bg-[radial-gradient(ellipse_at_50%_0%,rgba(22,163,74,0.15),transparent_70%)]" />
+        {/* Theme toggle */}
+        <button
+          onClick={toggle}
+          className="absolute top-4 right-4 p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors"
+          aria-label="Toggle theme"
+        >
+          {dark ? '☀️' : '🌙'}
+        </button>
         <div className="relative">
           <div className="text-7xl mb-4 drop-shadow-lg">🏏</div>
           <h1 className="text-3xl font-bold tracking-tight">Cricket Scorer</h1>
-          <p className="text-gray-400 text-sm mt-1.5">Live scoring for social cricket</p>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1.5">Live scoring for social cricket</p>
         </div>
       </div>
 
@@ -77,9 +87,9 @@ export default function Home() {
 
         {/* Divider */}
         <div className="flex items-center gap-3 my-1">
-          <div className="flex-1 h-px bg-gray-700/60" />
-          <span className="text-xs text-gray-600 font-semibold tracking-widest uppercase">Explore</span>
-          <div className="flex-1 h-px bg-gray-700/60" />
+          <div className="flex-1 h-px bg-gray-300 dark:bg-gray-700/60" />
+          <span className="text-xs text-gray-400 dark:text-gray-600 font-semibold tracking-widest uppercase">Explore</span>
+          <div className="flex-1 h-px bg-gray-300 dark:bg-gray-700/60" />
         </div>
 
         {/* Nav cards */}
@@ -114,12 +124,12 @@ function NavCard({
     return (
       <button
         onClick={onClick}
-        className="w-full bg-gray-800 hover:bg-gray-700/80 rounded-2xl p-4 flex items-center gap-4 transition-colors active:scale-[0.98]"
+        className="w-full bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700/80 rounded-2xl p-4 flex items-center gap-4 transition-colors active:scale-[0.98]"
       >
         <span className="text-3xl">{icon}</span>
         <div className="text-left flex-1">
           <p className="font-semibold text-sm">{title}</p>
-          <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{subtitle}</p>
         </div>
         {chevron}
       </button>
@@ -128,12 +138,12 @@ function NavCard({
   return (
     <button
       onClick={onClick}
-      className="bg-gray-800 hover:bg-gray-700/80 rounded-2xl p-4 flex flex-col items-center gap-2 transition-colors active:scale-[0.98]"
+      className="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700/80 rounded-2xl p-4 flex flex-col items-center gap-2 transition-colors active:scale-[0.98]"
     >
       <span className="text-3xl">{icon}</span>
       <div className="text-center">
         <p className="font-semibold text-sm">{title}</p>
-        <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{subtitle}</p>
       </div>
     </button>
   )

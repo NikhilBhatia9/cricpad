@@ -4,7 +4,7 @@
 
 @layer base {
   body {
-    @apply bg-gray-900 text-white antialiased;
+    @apply bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-white antialiased;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
   }
@@ -15,16 +15,16 @@
     @apply bg-green-600 hover:bg-green-500 active:bg-green-700 text-white font-semibold py-3 px-6 rounded-xl transition-colors w-full text-lg;
   }
   .btn-secondary {
-    @apply bg-gray-700 hover:bg-gray-600 active:bg-gray-800 text-white font-semibold py-3 px-6 rounded-xl transition-colors w-full text-lg;
+    @apply bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600 dark:active:bg-gray-800 dark:text-white font-semibold py-3 px-6 rounded-xl transition-colors w-full text-lg;
   }
   .btn-danger {
     @apply bg-red-600 hover:bg-red-500 text-white font-semibold py-3 px-6 rounded-xl transition-colors w-full text-lg;
   }
   .input-field {
-    @apply bg-gray-800 border border-gray-600 rounded-xl px-4 py-3 w-full text-white placeholder-gray-500 focus:outline-none focus:border-green-500 text-lg;
+    @apply bg-gray-100 border border-gray-300 text-gray-900 placeholder-gray-400 dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:placeholder-gray-500 rounded-xl px-4 py-3 w-full focus:outline-none focus:border-green-500 text-lg;
   }
   .card {
-    @apply bg-gray-800 rounded-2xl p-4;
+    @apply bg-white shadow-sm text-gray-900 dark:bg-gray-800 dark:text-white rounded-2xl p-4;
   }
   .ball-dot {
     @apply w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold;
