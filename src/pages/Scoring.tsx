@@ -548,7 +548,23 @@ export default function Scoring() {
           {(['wide', 'noball', 'bye', 'legbye'] as ExtraType[]).map((e) => (
             <button
               key={e}
-              onClick={() => setPendingExtra(pendingExtra === e ? null : e)}
+              onClick={() => {
+                if (e === 'wide') {
+                  // Wides auto-record as 1 extra immediately — no run tap needed
+                  if (!innings!.strikerId || !innings!.bowlerId) return
+                  recordBall({
+                    runsOffBat: 0,
+                    extras: 1,
+                    extraType: 'wide',
+                    isWicket: false,
+                    strikerId: innings!.strikerId!,
+                    bowlerId: innings!.bowlerId!,
+                    isLegal: false,
+                  })
+                } else {
+                  setPendingExtra(pendingExtra === e ? null : e)
+                }
+              }}
               className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${
                 pendingExtra === e ? 'bg-yellow-400 text-black ring-2 ring-yellow-300' : 'bg-gray-700 text-gray-300'
               }`}
@@ -558,7 +574,7 @@ export default function Scoring() {
           ))}
         </div>
 
-        {pendingExtra && (
+        {pendingExtra && pendingExtra !== 'wide' && (
           <div className="bg-yellow-400/10 border border-yellow-400/30 rounded-lg px-3 py-1.5 mb-3 text-center">
             <p className="text-yellow-300 text-sm font-semibold">{EXTRA_LABELS[pendingExtra]} selected {'\u2014'} tap runs scored</p>
           </div>
