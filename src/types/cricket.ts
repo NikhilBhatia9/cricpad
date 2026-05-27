@@ -109,4 +109,5 @@ export interface Match {
   status: 'setup' | 'toss' | 'live' | 'innings_break' | 'complete'
   result?: string
   createdAt: string
+  spectatorCode?: string
 }

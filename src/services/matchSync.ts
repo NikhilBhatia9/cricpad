@@ -1,4 +1,4 @@
-import { ref, set, onValue, off } from 'firebase/database'
+import { ref, set, onValue, off, get } from 'firebase/database'
 import { db, isFirebaseConfigured } from '../config/firebase'
 import type { Match } from '../types/cricket'
 
@@ -12,15 +12,43 @@ export function generateRoomCode(): string {
   ).join('')
 }
 
-export async function pushMatchToRoom(code: string, match: Match): Promise<void> {
+export async function pushMatchToRoom(code: string, match: Match, spectatorCode?: string): Promise<void> {
   if (!isFirebaseConfigured || !db) return
   try {
     await set(ref(db, `rooms/${code}`), {
       match: JSON.stringify(match),
+      ...(spectatorCode ? { spectatorCode } : {}),
       updatedAt: Date.now(),
     })
   } catch (e) {
     console.warn('Firebase push failed:', e)
+  }
+}
+
+/** Creates a read-only alias node so spectators can join via their own code. */
+export async function createSpectatorAlias(spectatorCode: string, scorerCode: string): Promise<void> {
+  if (!isFirebaseConfigured || !db) return
+  try {
+    await set(ref(db, `rooms/${spectatorCode}`), { aliasFor: scorerCode })
+  } catch (e) {
+    console.warn('Firebase alias creation failed:', e)
+  }
+}
+
+/** Resolves a code to { scorerCode, isSpectator }.
+ *  Returns null if the room doesn't exist after a single read. */
+export async function resolveRoomCode(code: string): Promise<{ scorerCode: string; isSpectator: boolean } | null> {
+  if (!isFirebaseConfigured || !db) return null
+  try {
+    const snap = await get(ref(db, `rooms/${code}`))
+    if (!snap.exists()) return null
+    const data = snap.val() as Record<string, unknown>
+    if (data.aliasFor && typeof data.aliasFor === 'string') {
+      return { scorerCode: data.aliasFor, isSpectator: true }
+    }
+    return { scorerCode: code, isSpectator: false }
+  } catch {
+    return null
   }
 }
 

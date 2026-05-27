@@ -4,6 +4,7 @@ import { supabase } from '../config/supabase'
 import { fetchAllPlayers, fetchPlayerStats, fetchMatchResultsMap, computeCareerBatting, computeCareerBowling, computeCareerRecord, renamePlayer } from '../db/operations'
 import type { PlayerRecord, PlayerMatchStat } from '../db/types'
 import BackButton from '../components/BackButton'
+import { useAuth } from '../hooks/useAuth'
 
 type SortKey = 'matches' | 'wins' | 'losses' | 'runs' | 'wickets' | 'maidens' | 'mvps' | 'average' | 'economy' | 'sixes' | 'catches'
 
@@ -30,6 +31,7 @@ function parseStat(val: string | number, fallback = 0): number {
 
 export default function Players() {
   const navigate = useNavigate()
+  const { isAdmin, user, signInWithGoogle, signOut } = useAuth()
   const [showAdd, setShowAdd] = useState(false)
   const [newName, setNewName] = useState('')
   const [addError, setAddError] = useState('')
@@ -156,15 +158,41 @@ export default function Players() {
       <div className="flex items-center gap-3 mb-4">
         <BackButton onClick={() => navigate('/')} />
         <h1 className="text-xl font-bold">Players</h1>
-        <button
-          className="ml-auto bg-green-600 hover:bg-green-500 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5"
-          onClick={() => { setShowAdd(!showAdd); setAddError('') }}
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-          Add Player
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          {isAdmin && (
+            <button
+              className="bg-green-600 hover:bg-green-500 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5"
+              onClick={() => { setShowAdd(!showAdd); setAddError('') }}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              Add
+            </button>
+          )}
+          {user ? (
+            <button
+              onClick={() => signOut()}
+              className="text-xs text-gray-400 hover:text-white bg-gray-700 hover:bg-gray-600 px-2.5 py-1.5 rounded-lg transition-colors"
+              title={`Signed in as ${user.email}`}
+            >
+              🔑 Admin
+            </button>
+          ) : (
+            <button
+              onClick={() => signInWithGoogle()}
+              className="text-xs text-gray-300 bg-gray-700 hover:bg-gray-600 px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+              </svg>
+              Sign in
+            </button>
+          )}
+        </div>
       </div>
 
       {showAdd && (
@@ -300,15 +328,17 @@ export default function Players() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="font-bold text-lg truncate">{player.name}</p>
-                        <button
-                          className="text-gray-500 hover:text-white transition-colors flex-shrink-0 p-1 rounded"
-                          onClick={(e) => startEdit(player.name, e)}
-                          title="Rename player"
-                        >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-1.414.586H8v-2.414a2 2 0 01.586-1.414z" />
-                          </svg>
-                        </button>
+                        {isAdmin && (
+                          <button
+                            className="text-gray-500 hover:text-white transition-colors flex-shrink-0 p-1 rounded"
+                            onClick={(e) => startEdit(player.name, e)}
+                            title="Rename player"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-1.414.586H8v-2.414a2 2 0 01.586-1.414z" />
+                            </svg>
+                          </button>
+                        )}
                       </div>
                       <p className="text-xs text-gray-500">{player.totalMatches} match{player.totalMatches !== 1 ? 'es' : ''} &middot; {rec.wins}W {rec.losses}L</p>
                       {/* Form dots — last 5 results */}

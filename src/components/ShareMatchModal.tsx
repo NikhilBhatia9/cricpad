@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useMatchStore } from '../store/matchStore'
-import { generateRoomCode } from '../services/matchSync'
+import { generateRoomCode, createSpectatorAlias } from '../services/matchSync'
 import { isFirebaseConfigured } from '../config/firebase'
 
 interface Props {
@@ -8,8 +8,9 @@ interface Props {
 }
 
 export default function ShareMatchModal({ onClose }: Props) {
-  const { match, roomCode, setRoomCode } = useMatchStore()
-  const [copied, setCopied] = useState(false)
+  const { match, roomCode, spectatorCode, setRoomCode, setSpectatorCode } = useMatchStore()
+  const [copiedScorer, setCopiedScorer] = useState(false)
+  const [copiedSpectator, setCopiedSpectator] = useState(false)
 
   if (!isFirebaseConfigured) {
     return (
@@ -25,29 +26,39 @@ export default function ShareMatchModal({ onClose }: Props) {
     )
   }
 
-  const code = roomCode ?? generateRoomCode()
-  if (!roomCode) setRoomCode(code)
+  // Generate both codes on first open
+  const scorer = roomCode ?? generateRoomCode()
+  const spectator = spectatorCode ?? generateRoomCode()
 
-  const shareUrl = `${window.location.origin}/social-cricket-scorer/join?code=${code}`
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    if (!roomCode) setRoomCode(scorer)
+    if (!spectatorCode) {
+      setSpectatorCode(spectator)
+      createSpectatorAlias(spectator, scorer)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-  function copyCode() {
-    navigator.clipboard.writeText(code).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+  const scorerUrl = `${window.location.origin}/social-cricket-scorer/join?code=${scorer}`
+  const spectatorUrl = `${window.location.origin}/social-cricket-scorer/join?code=${spectator}`
+
+  function copy(text: string, setFlag: (v: boolean) => void) {
+    navigator.clipboard.writeText(text).then(() => {
+      setFlag(true)
+      setTimeout(() => setFlag(false), 2000)
     })
   }
 
-  async function shareLink() {
+  async function shareUrl(url: string, label: string) {
     if (navigator.share) {
       await navigator.share({
         title: `Join cricket match — ${match?.teams[0].name} vs ${match?.teams[1].name}`,
-        text: `Use code ${code} to follow along live`,
-        url: shareUrl,
+        text: label,
+        url,
       })
     } else {
-      navigator.clipboard.writeText(shareUrl)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      navigator.clipboard.writeText(url)
     }
   }
 
@@ -59,29 +70,47 @@ export default function ShareMatchModal({ onClose }: Props) {
           <button className="text-gray-400 text-xl" onClick={onClose}>✕</button>
         </div>
 
-        <p className="text-sm text-gray-400 mb-4">
-          Others can join this match live on their device using the code below.
-        </p>
-
-        {/* Room code display */}
-        <div className="bg-gray-800 rounded-2xl p-5 text-center mb-4">
-          <p className="text-xs text-gray-500 uppercase tracking-widest mb-2">Match Code</p>
-          <p className="text-5xl font-bold tracking-[0.3em] text-green-400 font-mono">{code}</p>
+        {/* Scorer code */}
+        <div className="mb-4">
+          <p className="text-xs font-semibold text-green-400 uppercase tracking-widest mb-2">🎯 Scorer Code — can record balls</p>
+          <div className="bg-gray-800 rounded-2xl p-4 text-center mb-2">
+            <p className="text-4xl font-bold tracking-[0.3em] text-green-400 font-mono">{scorer}</p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              className={`btn-secondary text-sm flex items-center justify-center gap-1.5 ${copiedScorer ? 'bg-green-800 text-green-300' : ''}`}
+              onClick={() => copy(scorer, setCopiedScorer)}
+            >
+              {copiedScorer ? '✓ Copied' : '📋 Copy Code'}
+            </button>
+            <button className="btn-primary text-sm flex items-center justify-center gap-1.5" onClick={() => shareUrl(scorerUrl, `Use scorer code ${scorer} to score live`)}>
+              🔗 Share Link
+            </button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 mb-3">
-          <button
-            className={`btn-secondary flex items-center justify-center gap-2 transition-colors ${copied ? 'bg-green-800 text-green-300' : ''}`}
-            onClick={copyCode}
-          >
-            {copied ? '✓ Copied' : '📋 Copy Code'}
-          </button>
-          <button className="btn-primary flex items-center justify-center gap-2" onClick={shareLink}>
-            🔗 Share Link
-          </button>
+        <div className="h-px bg-gray-700 mb-4" />
+
+        {/* Spectator code */}
+        <div>
+          <p className="text-xs font-semibold text-blue-400 uppercase tracking-widest mb-2">👁 Spectator Code — view only</p>
+          <div className="bg-gray-800 rounded-2xl p-4 text-center mb-2">
+            <p className="text-4xl font-bold tracking-[0.3em] text-blue-400 font-mono">{spectator}</p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              className={`btn-secondary text-sm flex items-center justify-center gap-1.5 ${copiedSpectator ? 'bg-blue-800 text-blue-300' : ''}`}
+              onClick={() => copy(spectator, setCopiedSpectator)}
+            >
+              {copiedSpectator ? '✓ Copied' : '📋 Copy Code'}
+            </button>
+            <button className="btn-primary text-sm flex items-center justify-center gap-1.5" onClick={() => shareUrl(spectatorUrl, `Use spectator code ${spectator} to watch live`)}>
+              🔗 Share Link
+            </button>
+          </div>
         </div>
 
-        <p className="text-xs text-gray-600 text-center">
+        <p className="text-xs text-gray-600 text-center mt-4">
           Tell others to tap "Join Match" on the home screen
         </p>
       </div>

@@ -23,17 +23,17 @@ function matchFingerprint(m: Match): string {
 }
 
 export default function SyncManager() {
-  const { match, roomCode, loadRemoteMatch } = useMatchStore()
+  const { match, roomCode, spectatorCode, isSpectator, loadRemoteMatch } = useMatchStore()
   const lastPushedRef = useRef<string>('')
 
-  // Push local changes to Firebase
+  // Push local changes to Firebase — spectators never push
   useEffect(() => {
-    if (!isFirebaseConfigured || !match || !roomCode) return
+    if (!isFirebaseConfigured || !match || !roomCode || isSpectator) return
     const fp = matchFingerprint(match)
     if (fp === lastPushedRef.current) return // no change, skip
     lastPushedRef.current = fp
-    pushMatchToRoom(roomCode, match)
-  }, [match, roomCode])
+    pushMatchToRoom(roomCode, match, spectatorCode ?? undefined)
+  }, [match, roomCode, spectatorCode, isSpectator])
 
   // Subscribe to remote updates when roomCode is set
   useEffect(() => {

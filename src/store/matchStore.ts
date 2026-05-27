@@ -8,6 +8,8 @@ import type {
 interface MatchStore {
   match: Match | null
   roomCode: string | null
+  spectatorCode: string | null
+  isSpectator: boolean
   undoHistory: Innings[]
 
   // Setup
@@ -27,6 +29,8 @@ interface MatchStore {
 
   // Sync
   setRoomCode: (code: string | null) => void
+  setSpectatorCode: (code: string | null) => void
+  setIsSpectator: (val: boolean) => void
   loadRemoteMatch: (match: Match) => void
 }
 
@@ -54,6 +58,8 @@ export const useMatchStore = create<MatchStore>()(
     (set) => ({
       match: null,
       roomCode: null,
+      spectatorCode: null,
+      isSpectator: false,
       undoHistory: [],
 
       createMatch: (teams, maxOvers) => {
@@ -347,12 +353,14 @@ export const useMatchStore = create<MatchStore>()(
         })
       },
 
-      resetMatch: () => set({ match: null, roomCode: null, undoHistory: [] }),
+      resetMatch: () => set({ match: null, roomCode: null, spectatorCode: null, isSpectator: false, undoHistory: [] }),
 
       setRoomCode: (code) => set({ roomCode: code }),
+      setSpectatorCode: (code) => set({ spectatorCode: code }),
+      setIsSpectator: (val) => set({ isSpectator: val }),
 
       loadRemoteMatch: (match) => set({ match }),
     }),
-    { name: 'cricket-match', partialize: (s) => ({ match: s.match, roomCode: s.roomCode, undoHistory: s.undoHistory }) }
+    { name: 'cricket-match', partialize: (s) => ({ match: s.match, roomCode: s.roomCode, spectatorCode: s.spectatorCode, undoHistory: s.undoHistory }) }
   )
 )

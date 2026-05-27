@@ -80,7 +80,7 @@ function partnershipRunsFrom(innings: Innings): number {
 
 export default function Scoring() {
   const navigate = useNavigate()
-  const { match, setBatsmen, setBowler, recordBall, undoLastBall, undoHistory } = useMatchStore()
+  const { match, setBatsmen, setBowler, recordBall, undoLastBall, undoHistory, isSpectator } = useMatchStore()
 
   const [showWicketModal, setShowWicketModal] = useState(false)
   const [pendingExtra, setPendingExtra] = useState<ExtraType | null>(null)
@@ -525,12 +525,16 @@ export default function Scoring() {
             </p>
           </div>
           <div className="text-right flex flex-col items-end gap-2">
-            <button
-              className="bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors"
-              onClick={() => setShowShare(true)}
-            >
-              Share
-            </button>
+            {isSpectator ? (
+              <span className="bg-blue-900/50 border border-blue-700/50 text-blue-300 text-xs font-semibold px-2.5 py-1 rounded-lg">👁 Spectator</span>
+            ) : (
+              <button
+                className="bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                onClick={() => setShowShare(true)}
+              >
+                Share
+              </button>
+            )}
             <p className="text-xs text-gray-400">{match.maxOvers} overs</p>
             {innings.target && (() => {
               const ballsLeft = match.maxOvers * 6 - innings.totalLegalBalls
@@ -601,85 +605,101 @@ export default function Scoring() {
         )}
       </div>
 
-      {/* Extra toggle */}
-      <div className="px-4 pt-3">
-        <div className="flex gap-2 mb-3">
-          {(['wide', 'noball', 'bye', 'legbye'] as ExtraType[]).map((e) => (
-            <button
-              key={e}
-              onClick={() => {
-                if (e === 'wide') {
-                  // Wides auto-record as 1 extra immediately — no run tap needed
-                  if (!innings!.strikerId || !innings!.bowlerId) return
-                  recordBall({
-                    runsOffBat: 0,
-                    extras: 1,
-                    extraType: 'wide',
-                    isWicket: false,
-                    strikerId: innings!.strikerId!,
-                    bowlerId: innings!.bowlerId!,
-                    isLegal: false,
-                  })
-                } else {
-                  setPendingExtra(pendingExtra === e ? null : e)
-                }
-              }}
-              className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${
-                pendingExtra === e ? 'bg-yellow-400 text-black ring-2 ring-yellow-300' : 'bg-gray-700 text-gray-300'
-              }`}
-            >
-              {EXTRA_LABELS[e]}
-            </button>
-          ))}
-        </div>
-
-        {pendingExtra && pendingExtra !== 'wide' && (
-          <div className="bg-yellow-400/10 border border-yellow-400/30 rounded-lg px-3 py-1.5 mb-3 text-center">
-            <p className="text-yellow-300 text-sm font-semibold">{EXTRA_LABELS[pendingExtra]} selected {'\u2014'} tap runs scored</p>
+      {/* Extra toggle + run buttons + undo — hidden for spectators */}
+      {isSpectator ? (
+        <div className="px-4 pt-4 pb-6">
+          <div className="bg-blue-900/30 border border-blue-700/50 rounded-2xl px-5 py-6 text-center">
+            <p className="text-2xl mb-2">👁</p>
+            <p className="text-blue-300 font-semibold text-base mb-1">Watching Live</p>
+            <p className="text-gray-400 text-sm">You joined as a spectator. Scoring controls are available to scorers only.</p>
           </div>
-        )}
-
-        {/* Run buttons */}
-        <div className="grid grid-cols-4 gap-3 mb-3">
-          {[0, 1, 2, 3].map((r) => (
-            <button
-              key={r}
-              onClick={() => recordRuns(r)}
-              className="bg-gray-700 hover:bg-gray-600 active:bg-gray-900 text-white text-2xl font-bold py-5 rounded-2xl transition-colors"
-            >
-              {r}
-            </button>
-          ))}
-        </div>
-        <div className="grid grid-cols-3 gap-3 mb-3">
-          <button onClick={() => recordRuns(4)} className="bg-blue-700 hover:bg-blue-600 text-white text-2xl font-bold py-5 rounded-2xl">4</button>
-          <button onClick={() => recordRuns(6)} className="bg-purple-700 hover:bg-purple-600 text-white text-2xl font-bold py-5 rounded-2xl">6</button>
-          <button
-            onClick={() => setShowWicketModal(true)}
-            className="bg-red-700 hover:bg-red-600 text-white text-2xl font-bold py-5 rounded-2xl"
-          >
-            W
+          <button onClick={() => navigate('/')} className="mt-4 w-full bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-xl text-sm font-semibold">
+            🏠 Menu
           </button>
         </div>
-      </div>
+      ) : (
+        <>
+          {/* Extra toggle */}
+          <div className="px-4 pt-3">
+            <div className="flex gap-2 mb-3">
+              {(['wide', 'noball', 'bye', 'legbye'] as ExtraType[]).map((e) => (
+                <button
+                  key={e}
+                  onClick={() => {
+                    if (e === 'wide') {
+                      // Wides auto-record as 1 extra immediately — no run tap needed
+                      if (!innings!.strikerId || !innings!.bowlerId) return
+                      recordBall({
+                        runsOffBat: 0,
+                        extras: 1,
+                        extraType: 'wide',
+                        isWicket: false,
+                        strikerId: innings!.strikerId!,
+                        bowlerId: innings!.bowlerId!,
+                        isLegal: false,
+                      })
+                    } else {
+                      setPendingExtra(pendingExtra === e ? null : e)
+                    }
+                  }}
+                  className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${
+                    pendingExtra === e ? 'bg-yellow-400 text-black ring-2 ring-yellow-300' : 'bg-gray-700 text-gray-300'
+                  }`}
+                >
+                  {EXTRA_LABELS[e]}
+                </button>
+              ))}
+            </div>
 
-      {/* Footer actions */}
-      <div className="px-4 pb-6 flex gap-3 mt-auto pt-2">
-        <button
-          onClick={handleUndo}
-          disabled={undoHistory.length === 0}
-          className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-colors ${
-            undoHistory.length > 0
-              ? 'bg-gray-700 hover:bg-gray-600 text-white'
-              : 'bg-gray-800 text-gray-600 cursor-not-allowed'
-          }`}
-        >
-          &#x21A9; Undo{undoHistory.length > 0 ? ` (${undoHistory.length})` : ''}
-        </button>
-        <button onClick={() => navigate('/')} className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-xl text-sm font-semibold">
-          &#x1F3E0; Menu
-        </button>
-      </div>
+            {pendingExtra && pendingExtra !== 'wide' && (
+              <div className="bg-yellow-400/10 border border-yellow-400/30 rounded-lg px-3 py-1.5 mb-3 text-center">
+                <p className="text-yellow-300 text-sm font-semibold">{EXTRA_LABELS[pendingExtra]} selected {'\u2014'} tap runs scored</p>
+              </div>
+            )}
+
+            {/* Run buttons */}
+            <div className="grid grid-cols-4 gap-3 mb-3">
+              {[0, 1, 2, 3].map((r) => (
+                <button
+                  key={r}
+                  onClick={() => recordRuns(r)}
+                  className="bg-gray-700 hover:bg-gray-600 active:bg-gray-900 text-white text-2xl font-bold py-5 rounded-2xl transition-colors"
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-3 gap-3 mb-3">
+              <button onClick={() => recordRuns(4)} className="bg-blue-700 hover:bg-blue-600 text-white text-2xl font-bold py-5 rounded-2xl">4</button>
+              <button onClick={() => recordRuns(6)} className="bg-purple-700 hover:bg-purple-600 text-white text-2xl font-bold py-5 rounded-2xl">6</button>
+              <button
+                onClick={() => setShowWicketModal(true)}
+                className="bg-red-700 hover:bg-red-600 text-white text-2xl font-bold py-5 rounded-2xl"
+              >
+                W
+              </button>
+            </div>
+          </div>
+
+          {/* Footer actions */}
+          <div className="px-4 pb-6 flex gap-3 mt-auto pt-2">
+            <button
+              onClick={handleUndo}
+              disabled={undoHistory.length === 0}
+              className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-colors ${
+                undoHistory.length > 0
+                  ? 'bg-gray-700 hover:bg-gray-600 text-white'
+                  : 'bg-gray-800 text-gray-600 cursor-not-allowed'
+              }`}
+            >
+              &#x21A9; Undo{undoHistory.length > 0 ? ` (${undoHistory.length})` : ''}
+            </button>
+            <button onClick={() => navigate('/')} className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-xl text-sm font-semibold">
+              &#x1F3E0; Menu
+            </button>
+          </div>
+        </>
+      )}
 
       {showShare && <ShareMatchModal onClose={() => setShowShare(false)} />}
     </div>

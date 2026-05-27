@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMatchStore } from '../store/matchStore'
-import { subscribeToRoom } from '../services/matchSync'
+import { subscribeToRoom, resolveRoomCode } from '../services/matchSync'
 import { isFirebaseConfigured } from '../config/firebase'
 import BackButton from '../components/BackButton'
 
 export default function JoinMatch() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { setRoomCode, loadRemoteMatch } = useMatchStore()
+  const { setRoomCode, setIsSpectator, loadRemoteMatch } = useMatchStore()
 
   const [code, setCode] = useState(searchParams.get('code') ?? '')
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
@@ -27,7 +27,7 @@ export default function JoinMatch() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  function joinWithCode(joinCode: string) {
+  async function joinWithCode(joinCode: string) {
     const trimmed = joinCode.trim().toUpperCase()
     if (trimmed.length !== 6) {
       setErrorMsg('Code must be 6 characters')
@@ -44,19 +44,27 @@ export default function JoinMatch() {
     setStatus('loading')
     setErrorMsg('')
 
-    // Subscribe once to check if room exists
-    const unsub = subscribeToRoom(trimmed, (remoteMatch, rawJson) => {
+    // Resolve whether the code is a scorer code or spectator alias
+    const resolved = await resolveRoomCode(trimmed)
+    if (!resolved) {
+      setErrorMsg('Room not found. Check the code and try again.')
+      setStatus('error')
+      return
+    }
+
+    const { scorerCode, isSpectator } = resolved
+
+    // Subscribe to the actual scorer room
+    const unsub = subscribeToRoom(scorerCode, (remoteMatch) => {
       unsub()
-      setRoomCode(trimmed)
+      setRoomCode(scorerCode)
+      setIsSpectator(isSpectator)
       loadRemoteMatch(remoteMatch)
-      // Navigate to the right page based on match status
-      const status = remoteMatch.status
-      if (status === 'toss') navigate('/toss')
-      else if (status === 'innings_break') navigate('/innings-break')
-      else if (status === 'complete') navigate('/result')
+      const matchStatus = remoteMatch.status
+      if (matchStatus === 'toss') navigate('/toss')
+      else if (matchStatus === 'innings_break') navigate('/innings-break')
+      else if (matchStatus === 'complete') navigate('/result')
       else navigate('/scoring')
-      // Store raw for echo prevention
-      void rawJson
     })
 
     // Timeout if no response after 5s
