@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+﻿import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { fetchAllMatches, fetchMatch } from '../db/operations'
 import type { MatchRecord } from '../db/types'
@@ -6,6 +6,8 @@ import type { Match } from '../types/cricket'
 import { scoreString, oversDisplay } from '../utils/cricket'
 import BackButton from '../components/BackButton'
 import { computeMvp, mvpNarrative } from '../utils/mvp'
+import ScorecardImage from '../components/ScorecardImage'
+import { captureAndShare } from '../utils/shareScorecard'
 
 export default function MatchHistory() {
   const navigate = useNavigate()
@@ -82,10 +84,25 @@ export default function MatchHistory() {
 function MatchDetail({ matchId, onBack }: { matchId: string; onBack: () => void }) {
   const navigate = useNavigate()
   const [matchRecord, setMatchRecord] = useState<MatchRecord | null | undefined>(undefined)
+  const scorecardRef = useRef<HTMLDivElement>(null)
+  const [sharing, setSharing] = useState(false)
 
   useEffect(() => {
     fetchMatch(matchId).then(setMatchRecord)
   }, [matchId])
+
+  async function handleShare(match: Match) {
+    if (!scorecardRef.current) return
+    setSharing(true)
+    try {
+      const title = `${match.teams[0].name} vs ${match.teams[1].name} \u2014 ${match.result ?? 'Scorecard'}`
+      await captureAndShare(scorecardRef.current, title)
+    } catch (e) {
+      console.error('Share failed', e)
+    } finally {
+      setSharing(false)
+    }
+  }
 
   if (matchRecord === undefined) {
     return <div className="flex flex-col min-h-screen px-6 py-12 items-center justify-center"><div className="text-gray-400">Loading...</div></div>
@@ -135,6 +152,16 @@ function MatchDetail({ matchId, onBack }: { matchId: string; onBack: () => void 
           <p className="text-xs text-yellow-500/70 mt-2 italic">{mvpNarrative(mvp)}</p>
         </div>
       )}
+
+      {/* Share button */}
+      <button
+        className="w-full mb-4 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-2 transition-colors"
+        onClick={() => handleShare(match)}
+        disabled={sharing}
+      >
+        {sharing ? <span className="animate-spin">&#x21BB;</span> : <span>&#x1F4F2;</span>}
+        {sharing ? 'Generating...' : 'Share Scorecard'}
+      </button>
 
       {[i1, i2].map((inn, innIdx) => {
         if (!inn) return null
@@ -205,6 +232,11 @@ function MatchDetail({ matchId, onBack }: { matchId: string; onBack: () => void 
           </div>
         )
       })}
+
+      {/* Hidden scorecard for image capture */}
+      <div style={{ position: 'fixed', left: '-9999px', top: 0, pointerEvents: 'none' }}>
+        <ScorecardImage ref={scorecardRef} match={match} completedAt={matchRecord.completedAt} />
+      </div>
     </div>
   )
 }

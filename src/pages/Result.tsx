@@ -1,13 +1,17 @@
-﻿import { useEffect } from 'react'
+﻿import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMatchStore } from '../store/matchStore'
 import { scoreString, oversDisplay, sortedBatsmen, sortedBowlers, strikeRate, economyRate } from '../utils/cricket'
 import { computeMvp, mvpNarrative } from '../utils/mvp'
 import { saveMatch } from '../db/operations'
+import ScorecardImage from '../components/ScorecardImage'
+import { captureAndShare } from '../utils/shareScorecard'
 
 export default function Result() {
   const navigate = useNavigate()
   const { match, resetMatch } = useMatchStore()
+  const scorecardRef = useRef<HTMLDivElement>(null)
+  const [sharing, setSharing] = useState(false)
 
   useEffect(() => {
     if (match?.status === 'complete') saveMatch(match)
@@ -18,6 +22,19 @@ export default function Result() {
   const i1 = match.innings[0]
   const i2 = match.innings[1]
   const mvp = computeMvp(match)
+
+  async function handleShare() {
+    if (!scorecardRef.current) return
+    setSharing(true)
+    try {
+      const title = `${match!.teams[0].name} vs ${match!.teams[1].name} \u2014 ${match!.result ?? 'Scorecard'}`
+      await captureAndShare(scorecardRef.current, title)
+    } catch (e) {
+      console.error('Share failed', e)
+    } finally {
+      setSharing(false)
+    }
+  }
 
   return (
     <div className="px-4 py-6 max-w-lg mx-auto pb-10">
@@ -35,7 +52,6 @@ export default function Result() {
       {/* MVP Card */}
       {mvp && (
         <div className="relative mb-5 rounded-2xl overflow-hidden">
-          {/* Background gradient */}
           <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/20 via-amber-600/10 to-orange-500/20 border border-yellow-500/30 rounded-2xl" />
           <div className="relative px-4 py-4">
             <div className="flex items-center gap-2 mb-3">
@@ -56,8 +72,6 @@ export default function Result() {
                 <p className="text-xs text-gray-500">pts</p>
               </div>
             </div>
-
-            {/* Stat pills */}
             <div className="flex flex-wrap gap-2 mb-3">
               {mvp.batDidBat && mvp.batRuns > 0 && (
                 <span className="bg-green-900/50 border border-green-700/40 text-green-300 text-xs px-2.5 py-1 rounded-full font-semibold">
@@ -80,7 +94,6 @@ export default function Result() {
                 </span>
               )}
             </div>
-
             <p className="text-xs text-gray-400 italic leading-relaxed">{mvpNarrative(mvp)}</p>
           </div>
         </div>
@@ -96,7 +109,6 @@ export default function Result() {
               <h2 className="font-bold text-lg">{battingTeam.name}</h2>
               <p className="text-2xl font-bold">{scoreString(inn)} <span className="text-base text-gray-400">({oversDisplay(inn.totalLegalBalls)} ov)</span></p>
             </div>
-
             <table className="w-full text-sm mb-3">
               <thead>
                 <tr className="text-gray-500 text-xs border-b border-gray-700">
@@ -127,7 +139,6 @@ export default function Result() {
             <p className="text-xs text-gray-500 mb-3">
               Extras: {inn.extras.wides}w &middot; {inn.extras.noBalls}nb &middot; {inn.extras.byes}b &middot; {inn.extras.legByes}lb
             </p>
-
             <h3 className="text-sm text-gray-400 font-semibold mb-2">Bowling</h3>
             <table className="w-full text-sm">
               <thead>
@@ -158,9 +169,26 @@ export default function Result() {
       })}
 
       <div className="flex gap-3 mt-2">
-        <button className="btn-primary" onClick={() => { resetMatch(); navigate('/') }}>
+        <button
+          className="flex-1 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-colors"
+          onClick={handleShare}
+          disabled={sharing}
+        >
+          {sharing ? (
+            <span className="animate-spin text-lg">&#x21BB;</span>
+          ) : (
+            <span>&#x1F4F2;</span>
+          )}
+          {sharing ? 'Generating...' : 'Share Scorecard'}
+        </button>
+        <button className="flex-1 btn-primary" onClick={() => { resetMatch(); navigate('/') }}>
           &#x1F3CF; New Match
         </button>
+      </div>
+
+      {/* Hidden scorecard for image capture */}
+      <div style={{ position: 'fixed', left: '-9999px', top: 0, pointerEvents: 'none' }}>
+        <ScorecardImage ref={scorecardRef} match={match} completedAt={new Date().toISOString()} />
       </div>
     </div>
   )
