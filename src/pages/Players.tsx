@@ -1,22 +1,24 @@
 ﻿import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../config/supabase'
-import { fetchAllPlayers, fetchPlayerStats, computeCareerBatting, computeCareerBowling } from '../db/operations'
+import { fetchAllPlayers, fetchPlayerStats, fetchMatchResultsMap, computeCareerBatting, computeCareerBowling, computeCareerRecord } from '../db/operations'
 import type { PlayerRecord, PlayerMatchStat } from '../db/types'
 import BackButton from '../components/BackButton'
 
-type SortKey = 'matches' | 'runs' | 'wickets' | 'maidens' | 'mvps' | 'average' | 'economy' | 'sixes' | 'catches'
+type SortKey = 'matches' | 'wins' | 'losses' | 'runs' | 'wickets' | 'maidens' | 'mvps' | 'average' | 'economy' | 'sixes' | 'catches'
 
 const SORT_OPTIONS: { key: SortKey; label: string; icon: string }[] = [
-  { key: 'matches',  label: 'Matches',  icon: '📅' },
-  { key: 'runs',     label: 'Runs',     icon: '🏏' },
-  { key: 'wickets',  label: 'Wickets',  icon: '🎯' },
-  { key: 'maidens',  label: 'Maidens',  icon: '🔇' },
-  { key: 'mvps',     label: 'MVPs',     icon: '⭐' },
-  { key: 'average',  label: 'Avg',      icon: '📈' },
-  { key: 'economy',  label: 'Eco',      icon: '💨' },
-  { key: 'sixes',    label: 'Sixes',    icon: '6️⃣' },
-  { key: 'catches',  label: 'Catches',  icon: '🤲' },
+  { key: 'matches',  label: 'Most Matches',   icon: '📅' },
+  { key: 'wins',     label: 'Most Wins',       icon: '🏆' },
+  { key: 'losses',   label: 'Most Losses',     icon: '💔' },
+  { key: 'runs',     label: 'Most Runs',       icon: '🏏' },
+  { key: 'wickets',  label: 'Most Wickets',    icon: '🎯' },
+  { key: 'maidens',  label: 'Most Maidens',    icon: '🔇' },
+  { key: 'mvps',     label: 'Most MVPs',       icon: '⭐' },
+  { key: 'average',  label: 'Best Average',    icon: '📈' },
+  { key: 'economy',  label: 'Best Economy',    icon: '💨' },
+  { key: 'sixes',    label: 'Most Sixes',      icon: '6️⃣' },
+  { key: 'catches',  label: 'Most Catches',    icon: '🤲' },
 ]
 
 function parseStat(val: string | number, fallback = 0): number {
@@ -33,6 +35,7 @@ export default function Players() {
   const [addError, setAddError] = useState('')
   const [players, setPlayers] = useState<PlayerRecord[] | null>(null)
   const [statsMap, setStatsMap] = useState<Record<string, PlayerMatchStat[]>>({})
+  const [matchResults, setMatchResults] = useState<Record<string, string>>({})
   const [sortKey, setSortKey] = useState<SortKey>('matches')
 
   async function loadPlayers() {
@@ -45,6 +48,10 @@ export default function Players() {
       })
     )
     setStatsMap(map)
+    // Collect all unique match IDs across all players and fetch results once
+    const allMatchIds = [...new Set(Object.values(map).flat().map((s) => s.matchId))]
+    const results = await fetchMatchResultsMap(allMatchIds)
+    setMatchResults(results)
   }
 
   useEffect(() => { loadPlayers() }, [])
@@ -74,6 +81,16 @@ export default function Players() {
 
       switch (sortKey) {
         case 'matches':  return b.totalMatches - a.totalMatches
+        case 'wins': {
+          const recA = computeCareerRecord(sa, matchResults)
+          const recB = computeCareerRecord(sb, matchResults)
+          return recB.wins - recA.wins
+        }
+        case 'losses': {
+          const recA = computeCareerRecord(sa, matchResults)
+          const recB = computeCareerRecord(sb, matchResults)
+          return recB.losses - recA.losses
+        }
         case 'runs':     return batB.totalRuns - batA.totalRuns
         case 'wickets':  return bowlB.wickets - bowlA.wickets
         case 'maidens':  return bowlB.maidens - bowlA.maidens
@@ -86,7 +103,6 @@ export default function Players() {
         }
         case 'average':  return parseStat(batB.average) - parseStat(batA.average)
         case 'economy':  {
-          // Lower economy is better — put '-' (no bowling) last
           const eA = parseStat(bowlA.economy, 9999)
           const eB = parseStat(bowlB.economy, 9999)
           return eA - eB
@@ -94,7 +110,7 @@ export default function Players() {
         default: return 0
       }
     })
-  }, [players, statsMap, sortKey])
+  }, [players, statsMap, matchResults, sortKey])
 
   if (!players) {
     return (
@@ -143,24 +159,25 @@ export default function Players() {
         </div>
       )}
 
-      {/* Sort chips */}
+      {/* Sort dropdown */}
       {players.length > 0 && (
-        <div className="mb-4 -mx-1">
-          <div className="flex gap-2 overflow-x-auto pb-1 px-1 scrollbar-hide">
-            {SORT_OPTIONS.map(({ key, label, icon }) => (
-              <button
-                key={key}
-                onClick={() => setSortKey(key)}
-                className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-                  sortKey === key
-                    ? 'bg-green-600 text-white'
-                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                }`}
-              >
-                <span>{icon}</span>
-                {label}
-              </button>
-            ))}
+        <div className="mb-4 flex items-center gap-2">
+          <label className="text-xs text-gray-400 whitespace-nowrap">Sort by</label>
+          <div className="relative flex-1">
+            <select
+              value={sortKey}
+              onChange={(e) => setSortKey(e.target.value as SortKey)}
+              className="w-full appearance-none bg-gray-700 border border-gray-600 text-white text-sm font-semibold rounded-xl px-4 py-2.5 pr-9 focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer"
+            >
+              {SORT_OPTIONS.map(({ key, label, icon }) => (
+                <option key={key} value={key}>{icon} {label}</option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
           </div>
         </div>
       )}
@@ -177,21 +194,46 @@ export default function Players() {
           const stats = statsMap[player.name] ?? []
           const bat = computeCareerBatting(stats)
           const bowl = computeCareerBowling(stats)
+          const rec = computeCareerRecord(stats, matchResults)
+
+          // Build the highlighted stat badge based on current sort
+          let statLabel = ''
+          let statValue: string | number = ''
+          switch (sortKey) {
+            case 'matches':  statLabel = 'Matches';  statValue = player.totalMatches; break
+            case 'wins':     statLabel = 'Wins';     statValue = rec.wins; break
+            case 'losses':   statLabel = 'Losses';   statValue = rec.losses; break
+            case 'runs':     statLabel = 'Runs';     statValue = bat.totalRuns; break
+            case 'wickets':  statLabel = 'Wickets';  statValue = bowl.wickets; break
+            case 'maidens':  statLabel = 'Maidens';  statValue = bowl.maidens; break
+            case 'mvps':     statLabel = 'MVPs';     statValue = bat.mvpWins; break
+            case 'average':  statLabel = 'Avg';      statValue = bat.average; break
+            case 'economy':  statLabel = 'Economy';  statValue = bowl.economy; break
+            case 'sixes':    statLabel = 'Sixes';    statValue = bat.sixes; break
+            case 'catches':  statLabel = 'Catches';  statValue = stats.reduce((s, r) => s + (r.fieldCatches ?? 0), 0); break
+          }
+
+          const statColor = sortKey === 'wins' ? 'text-green-400' : sortKey === 'losses' ? 'text-red-400' : 'text-yellow-300'
+
           return (
             <button
               key={player.name}
               className="card w-full text-left hover:bg-gray-700/80 transition-colors active:scale-[0.99]"
               onClick={() => navigate(`/players/${encodeURIComponent(player.name)}`)}
             >
-              <div className="flex justify-between items-center mb-2">
+              <div className="flex justify-between items-center">
                 <div>
                   <p className="font-bold text-lg">{player.name}</p>
-                  <p className="text-xs text-gray-500">{player.totalMatches} match{player.totalMatches !== 1 ? 'es' : ''}</p>
+                  <p className="text-xs text-gray-500">{player.totalMatches} match{player.totalMatches !== 1 ? 'es' : ''} &middot; {rec.wins}W {rec.losses}L</p>
                 </div>
-                <div className="text-right">
-                  <span className="text-2xl">&#x1F9D1;&#x200D;&#x1F3CF;</span>
+                <div className="text-right flex flex-col items-end gap-1">
+                  {/* Sort-relevant stat */}
+                  <div className="bg-gray-800 rounded-xl px-3 py-1.5 text-center min-w-[64px]">
+                    <p className={`text-xl font-bold ${statColor}`}>{statValue}</p>
+                    <p className="text-xs text-gray-500">{statLabel}</p>
+                  </div>
                   {bat.mvpWins > 0 && (
-                    <p className="text-xs text-yellow-400 font-semibold mt-0.5">&#x2B50; MVP x{bat.mvpWins}</p>
+                    <p className="text-xs text-yellow-400 font-semibold">&#x2B50; MVP &times;{bat.mvpWins}</p>
                   )}
                 </div>
               </div>

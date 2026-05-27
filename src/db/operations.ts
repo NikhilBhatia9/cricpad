@@ -116,6 +116,39 @@ export async function fetchMatchesByIds(ids: string[]): Promise<MatchRecord[]> {
   return (data ?? []).map(rowToMatch)
 }
 
+// Lightweight: fetch only id+result for a set of match IDs (no limit)
+export async function fetchMatchResultsMap(ids: string[]): Promise<Record<string, string>> {
+  if (ids.length === 0) return {}
+  const { data, error } = await supabase
+    .from('matches')
+    .select('id, result')
+    .in('id', ids)
+  if (error) throw error
+  const map: Record<string, string> = {}
+  for (const r of (data ?? [])) map[r.id as string] = r.result as string
+  return map
+}
+
+export function computeCareerRecord(
+  stats: PlayerMatchStat[],
+  matchResults: Record<string, string>
+): { wins: number; losses: number; ties: number } {
+  const matchIds = [...new Set(stats.map((s) => s.matchId))]
+  return matchIds.reduce(
+    (acc, matchId) => {
+      const result = matchResults[matchId]
+      if (!result) return acc
+      const playerStat = stats.find((s) => s.matchId === matchId)
+      if (!playerStat) return acc
+      const r = result.toLowerCase()
+      if (r.includes('tied') || r.includes('tie')) return { ...acc, ties: acc.ties + 1 }
+      if (result.startsWith(playerStat.teamName)) return { ...acc, wins: acc.wins + 1 }
+      return { ...acc, losses: acc.losses + 1 }
+    },
+    { wins: 0, losses: 0, ties: 0 }
+  )
+}
+
 // ─── Save match ─────────────────────────────────────────────────────────────
 
 export async function saveMatch(match: Match): Promise<void> {
