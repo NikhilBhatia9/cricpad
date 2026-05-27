@@ -88,8 +88,8 @@ export default function Scoring() {
   if (!innings) return <div className="p-6 text-center">Innings not started.</div>
 
   if (innings.isComplete) {
-    if (idx === 0) navigate('/innings-break')
-    else navigate('/result')
+    if (idx === 0) navigate('/innings-break', { replace: true })
+    else navigate('/result', { replace: true })
     return null
   }
 
@@ -139,7 +139,10 @@ export default function Scoring() {
     const isLegal = extra !== 'wide' && extra !== 'noball'
     recordBall({
       runsOffBat: extra === 'wide' || extra === 'bye' || extra === 'legbye' ? 0 : runs,
-      extras: extra ? (extra === 'wide' || extra === 'noball' ? 1 + runs : runs) : 0,
+      // Wide:   1 (penalty) + any runs  → extras = 1 + runs
+      // No Ball: 1 (penalty) only       → extras = 1  (runs off bat counted separately via runsOffBat)
+      // Bye/Leg: runs count as extras   → extras = runs
+      extras: extra === 'wide' ? 1 + runs : extra === 'noball' ? 1 : extra ? runs : 0,
       extraType: extra ?? undefined,
       isWicket: false,
       strikerId: innings!.strikerId!,
@@ -179,12 +182,36 @@ export default function Scoring() {
 
   // ── 1. New batsman after wicket ──
   if (showNewBatsman) {
+    const alreadyOut = Object.keys(innings.batsmen).filter((id) => innings.batsmen[id].isOut)
+    const available = battingTeam.players.filter(
+      (p) => !alreadyOut.includes(p.id) && p.id !== innings.nonStrikerId && !batsmanExcludeShared.includes(p.id)
+    )
+
+    // Last man standing — no new batsman to bring in, non-striker bats alone
+    if (available.length === 0 && innings.nonStrikerId) {
+      return (
+        <div className="flex flex-col min-h-screen items-center justify-center px-6 text-center">
+          <div className="text-5xl mb-3">&#x1F3CF;</div>
+          <h2 className="text-xl font-bold mb-2">Last Batsman</h2>
+          <p className="text-gray-400 mb-6">
+            {innings.batsmen[innings.nonStrikerId]?.name ?? 'Last player'} is the last batsman remaining.
+          </p>
+          <button
+            className="btn-primary"
+            onClick={() => { setBatsmen(innings.nonStrikerId!, ''); setShowNewBatsman(false) }}
+          >
+            Continue &rarr;
+          </button>
+        </div>
+      )
+    }
+
     return (
       <PlayerSelector
         title="New Batsman"
         players={battingTeam.players}
         exclude={[
-          ...Object.keys(innings.batsmen).filter((id) => innings.batsmen[id].isOut),
+          ...alreadyOut,
           innings.nonStrikerId ?? '',
           ...batsmanExcludeShared,
         ]}

@@ -13,6 +13,7 @@ export default function InningsBreak() {
   const bowlingTeamIndex: 0 | 1 = firstInnings.battingTeamIndex === 0 ? 1 : 0
   const target = firstInnings.totalRuns + 1
   const chasingTeam = match.teams[bowlingTeamIndex]
+  const secondInningsStarted = !!match.innings[1]
 
   return (
     <div className="px-4 py-6 max-w-lg mx-auto">
@@ -92,8 +93,8 @@ export default function InningsBreak() {
         </table>
       </div>
 
-      <button className="btn-primary" onClick={() => { startSecondInnings(); navigate('/scoring') }}>
-        Start 2nd Innings →
+      <button className="btn-primary" onClick={() => { startSecondInnings(); navigate('/scoring', { replace: true }) }}>
+        {secondInningsStarted ? 'Resume 2nd Innings \u2192' : 'Start 2nd Innings \u2192'}
       </button>
     </div>
   )

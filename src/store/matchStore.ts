@@ -103,13 +103,16 @@ export const useMatchStore = create<MatchStore>()(
             const pos = Object.keys(batsmen).length + 1
             batsmen[strikerId] = { playerId: strikerId, name: p?.name ?? strikerId, runs: 0, balls: 0, fours: 0, sixes: 0, isOut: false, battingPosition: pos }
           }
-          if (!batsmen[nonStrikerId]) {
-            const p = team.players.find((p) => p.id === nonStrikerId)
+          // Only create non-striker entry if a valid (non-empty) ID is provided.
+          // An empty string means "last batsman" mode — solo striker, no partner.
+          const actualNonStrikerId = nonStrikerId || null
+          if (actualNonStrikerId && !batsmen[actualNonStrikerId]) {
+            const p = team.players.find((p) => p.id === actualNonStrikerId)
             const pos = Object.keys(batsmen).length + 1
-            batsmen[nonStrikerId] = { playerId: nonStrikerId, name: p?.name ?? nonStrikerId, runs: 0, balls: 0, fours: 0, sixes: 0, isOut: false, battingPosition: pos }
+            batsmen[actualNonStrikerId] = { playerId: actualNonStrikerId, name: p?.name ?? actualNonStrikerId, runs: 0, balls: 0, fours: 0, sixes: 0, isOut: false, battingPosition: pos }
           }
 
-          const updatedInnings = { ...innings, batsmen, strikerId, nonStrikerId }
+          const updatedInnings = { ...innings, batsmen, strikerId, nonStrikerId: actualNonStrikerId }
           const newInnings = [...s.match.innings] as [Innings | null, Innings | null]
           newInnings[idx] = updatedInnings
           return { match: { ...s.match, innings: newInnings } }
@@ -226,7 +229,9 @@ export const useMatchStore = create<MatchStore>()(
           }
 
           const maxBalls = s.match.maxOvers * 6
-          const allOut = newWickets >= s.match.teams[innings.battingTeamIndex].players.length - 1
+          // Innings ends when ALL batsmen are dismissed (not teamSize-1).
+          // This allows the last remaining batsman to continue batting alone.
+          const allOut = newWickets >= s.match.teams[innings.battingTeamIndex].players.length
           const oversUp = newLegalBalls >= maxBalls
           const chased = innings.target !== undefined && newRuns >= innings.target
 
@@ -295,6 +300,12 @@ export const useMatchStore = create<MatchStore>()(
       startSecondInnings: () => {
         set((s) => {
           if (!s.match) return s
+          // Idempotent: if 2nd innings already in progress, just resume it — never overwrite
+          if (s.match.innings[1]) {
+            return {
+              match: { ...s.match, currentInningsIndex: 1, status: 'live' },
+            }
+          }
           const firstInnings = s.match.innings[0]
           if (!firstInnings) return s
           const target = firstInnings.totalRuns + 1
@@ -326,6 +337,6 @@ export const useMatchStore = create<MatchStore>()(
 
       loadRemoteMatch: (match) => set({ match }),
     }),
-    { name: 'cricket-match' }
+    { name: 'cricket-match', partialize: (s) => ({ match: s.match, roomCode: s.roomCode, undoHistory: s.undoHistory }) }
   )
 )
