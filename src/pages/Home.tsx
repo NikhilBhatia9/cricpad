@@ -31,9 +31,13 @@ export default function Home() {
           {dark ? '☀️' : '🌙'}
         </button>
         <div className="relative">
-          <div className="text-7xl mb-4 drop-shadow-lg">🏏</div>
+          <img
+            src="/social-cricket-scorer/icons/icon.svg"
+            alt="Cricket Scorer icon"
+            className="w-28 h-28 mx-auto mb-4 drop-shadow-xl rounded-3xl"
+          />
           <h1 className="text-3xl font-bold tracking-tight">Cricket Scorer</h1>
-          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1.5">Live scoring for social cricket</p>
+          <p className="text-green-600 dark:text-green-400 text-sm font-semibold mt-1.5 tracking-wide italic">No DRS. No mercy.</p>
         </div>
       </div>
 
