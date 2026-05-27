@@ -257,7 +257,32 @@ export async function saveMatch(match: Match): Promise<void> {
   }
 }
 
-// ─── Career aggregation (pure functions, unchanged) ─────────────────────────
+export async function renamePlayer(oldName: string, newName: string): Promise<{ error: string | null }> {
+  const trimmed = newName.trim()
+  if (!trimmed) return { error: 'Name cannot be empty' }
+  if (trimmed === oldName) return { error: null } // no-op
+
+  // Check for duplicate
+  const existing = await fetchPlayer(trimmed)
+  if (existing) return { error: 'A player with that name already exists' }
+
+  // Rename in players table
+  const { error: playerErr } = await supabase
+    .from('players')
+    .update({ name: trimmed })
+    .eq('name', oldName)
+  if (playerErr) return { error: playerErr.message }
+
+  // Cascade rename to all player_stats rows
+  const { error: statsErr } = await supabase
+    .from('player_stats')
+    .update({ player_name: trimmed })
+    .eq('player_name', oldName)
+  if (statsErr) return { error: statsErr.message }
+
+  return { error: null }
+}
+
 
 export function computeCareerBatting(stats: PlayerMatchStat[]): CareerBatting {
   const bat = stats.filter((s) => s.batDidBat)

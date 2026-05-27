@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../config/supabase'
-import { fetchAllPlayers, fetchPlayerStats, fetchMatchResultsMap, computeCareerBatting, computeCareerBowling, computeCareerRecord } from '../db/operations'
+import { fetchAllPlayers, fetchPlayerStats, fetchMatchResultsMap, computeCareerBatting, computeCareerBowling, computeCareerRecord, renamePlayer } from '../db/operations'
 import type { PlayerRecord, PlayerMatchStat } from '../db/types'
 import BackButton from '../components/BackButton'
 
@@ -37,6 +37,10 @@ export default function Players() {
   const [statsMap, setStatsMap] = useState<Record<string, PlayerMatchStat[]>>({})
   const [matchResults, setMatchResults] = useState<Record<string, string>>({})
   const [sortKey, setSortKey] = useState<SortKey>('matches')
+  const [editingPlayer, setEditingPlayer] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editError, setEditError] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
 
   async function loadPlayers() {
     const ps = await fetchAllPlayers()
@@ -69,7 +73,34 @@ export default function Players() {
     loadPlayers()
   }
 
-  const sortedPlayers = useMemo(() => {
+  async function saveEdit() {
+    if (!editingPlayer) return
+    const trimmed = editName.trim()
+    if (!trimmed) { setEditError('Enter a name'); return }
+    setEditSaving(true)
+    const { error } = await renamePlayer(editingPlayer, trimmed)
+    setEditSaving(false)
+    if (error) { setEditError(error); return }
+    setEditingPlayer(null)
+    setEditName('')
+    setEditError('')
+    loadPlayers()
+  }
+
+  function startEdit(name: string, e: React.MouseEvent) {
+    e.stopPropagation()
+    setEditingPlayer(name)
+    setEditName(name)
+    setEditError('')
+  }
+
+  function cancelEdit() {
+    setEditingPlayer(null)
+    setEditName('')
+    setEditError('')
+  }
+
+
     if (!players) return []
     return [...players].sort((a, b) => {
       const sa = statsMap[a.name] ?? []
@@ -230,60 +261,103 @@ export default function Players() {
           const statColor = sortKey === 'wins' ? 'text-green-400' : sortKey === 'losses' ? 'text-red-400' : 'text-yellow-300'
 
           return (
-            <button
-              key={player.name}
-              className="card w-full text-left hover:bg-gray-700/80 transition-colors active:scale-[0.99]"
-              onClick={() => navigate(`/players/${encodeURIComponent(player.name)}`)}
-            >
-              <div className="flex justify-between items-center">
+            <div key={player.name} className="card">
+              {/* ── Inline rename form ── */}
+              {editingPlayer === player.name ? (
                 <div>
-                  <p className="font-bold text-lg">{player.name}</p>
-                  <p className="text-xs text-gray-500">{player.totalMatches} match{player.totalMatches !== 1 ? 'es' : ''} &middot; {rec.wins}W {rec.losses}L</p>
-                  {/* Form dots — last 5 results */}
-                  {formDots.length > 0 && (
-                    <div className="flex gap-1 mt-1">
-                      {formDots.map((dot, i) => (
-                        <span
-                          key={i}
-                          className={`inline-block w-2.5 h-2.5 rounded-full ${
-                            dot === 'win' ? 'bg-green-500' : dot === 'loss' ? 'bg-red-500' : dot === 'tie' ? 'bg-yellow-400' : 'bg-gray-600'
-                          }`}
-                          title={dot}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div className="text-right flex flex-col items-end gap-1">
-                  {/* Sort-relevant stat */}
-                  <div className="bg-gray-800 rounded-xl px-3 py-1.5 text-center min-w-[64px]">
-                    <p className={`text-xl font-bold ${statColor}`}>{statValue}</p>
-                    <p className="text-xs text-gray-500">{statLabel}</p>
+                  <p className="text-xs text-gray-400 mb-2 font-semibold">Rename player</p>
+                  <div className="flex gap-2 mb-2">
+                    <input
+                      autoFocus
+                      className="input-field flex-1"
+                      value={editName}
+                      onChange={(e) => { setEditName(e.target.value); setEditError('') }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit() }}
+                    />
+                    <button
+                      disabled={editSaving}
+                      onClick={saveEdit}
+                      className="bg-green-600 hover:bg-green-500 disabled:opacity-50 px-4 rounded-lg font-semibold text-sm transition-colors"
+                    >
+                      {editSaving ? '…' : 'Save'}
+                    </button>
+                    <button
+                      onClick={cancelEdit}
+                      className="bg-gray-600 hover:bg-gray-500 px-3 rounded-lg text-sm transition-colors"
+                    >
+                      ✕
+                    </button>
                   </div>
-                  {bat.mvpWins > 0 && (
-                    <p className="text-xs text-yellow-400 font-semibold">&#x2B50; MVP &times;{bat.mvpWins}</p>
-                  )}
+                  {editError && <p className="text-red-400 text-xs">{editError}</p>}
                 </div>
-              </div>
-              {(bat.innings > 0 || bowl.wickets > 0) && (
-                <div className="grid grid-cols-2 gap-2 mt-3">
-                  {bat.innings > 0 && (
-                    <div className="bg-gray-900/60 rounded-xl p-2.5 text-center">
-                      <p className="text-xs text-gray-500 mb-1">&#x1F3CF; Batting</p>
-                      <p className="text-xl font-bold text-green-400">{bat.totalRuns}</p>
-                      <p className="text-xs text-gray-400">runs &middot; avg {bat.average}</p>
+              ) : (
+                /* ── Normal player row (tappable to navigate) ── */
+                <button
+                  className="w-full text-left hover:bg-gray-700/40 transition-colors active:scale-[0.99] rounded-xl"
+                  onClick={() => navigate(`/players/${encodeURIComponent(player.name)}`)}
+                >
+                  <div className="flex justify-between items-center">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold text-lg truncate">{player.name}</p>
+                        <button
+                          className="text-gray-500 hover:text-white transition-colors flex-shrink-0 p-1 rounded"
+                          onClick={(e) => startEdit(player.name, e)}
+                          title="Rename player"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-1.414.586H8v-2.414a2 2 0 01.586-1.414z" />
+                          </svg>
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500">{player.totalMatches} match{player.totalMatches !== 1 ? 'es' : ''} &middot; {rec.wins}W {rec.losses}L</p>
+                      {/* Form dots — last 5 results */}
+                      {formDots.length > 0 && (
+                        <div className="flex gap-1 mt-1">
+                          {formDots.map((dot, i) => (
+                            <span
+                              key={i}
+                              className={`inline-block w-2.5 h-2.5 rounded-full ${
+                                dot === 'win' ? 'bg-green-500' : dot === 'loss' ? 'bg-red-500' : dot === 'tie' ? 'bg-yellow-400' : 'bg-gray-600'
+                              }`}
+                              title={dot}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-right flex flex-col items-end gap-1 ml-3">
+                      {/* Sort-relevant stat */}
+                      <div className="bg-gray-800 rounded-xl px-3 py-1.5 text-center min-w-[64px]">
+                        <p className={`text-xl font-bold ${statColor}`}>{statValue}</p>
+                        <p className="text-xs text-gray-500">{statLabel}</p>
+                      </div>
+                      {bat.mvpWins > 0 && (
+                        <p className="text-xs text-yellow-400 font-semibold">&#x2B50; MVP &times;{bat.mvpWins}</p>
+                      )}
+                    </div>
+                  </div>
+                  {(bat.innings > 0 || bowl.wickets > 0) && (
+                    <div className="grid grid-cols-2 gap-2 mt-3">
+                      {bat.innings > 0 && (
+                        <div className="bg-gray-900/60 rounded-xl p-2.5 text-center">
+                          <p className="text-xs text-gray-500 mb-1">&#x1F3CF; Batting</p>
+                          <p className="text-xl font-bold text-green-400">{bat.totalRuns}</p>
+                          <p className="text-xs text-gray-400">runs &middot; avg {bat.average}</p>
+                        </div>
+                      )}
+                      {bowl.wickets > 0 && (
+                        <div className="bg-gray-900/60 rounded-xl p-2.5 text-center">
+                          <p className="text-xs text-gray-500 mb-1">&#x1F3AF; Bowling</p>
+                          <p className="text-xl font-bold text-blue-400">{bowl.wickets}</p>
+                          <p className="text-xs text-gray-400">wkts &middot; eco {bowl.economy}</p>
+                        </div>
+                      )}
                     </div>
                   )}
-                  {bowl.wickets > 0 && (
-                    <div className="bg-gray-900/60 rounded-xl p-2.5 text-center">
-                      <p className="text-xs text-gray-500 mb-1">&#x1F3AF; Bowling</p>
-                      <p className="text-xl font-bold text-blue-400">{bowl.wickets}</p>
-                      <p className="text-xs text-gray-400">wkts &middot; eco {bowl.economy}</p>
-                    </div>
-                  )}
-                </div>
+                </button>
               )}
-            </button>
+            </div>
           )
         })}
       </div>
