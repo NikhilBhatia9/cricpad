@@ -215,16 +215,17 @@ export const useMatchStore = create<MatchStore>()(
           const newRuns = innings.totalRuns + ball.runsOffBat + ball.extras
           const newWickets = innings.totalWickets + (ball.isWicket ? 1 : 0)
 
-          // Swap striker on odd runs (off bat only) or end of over
+          // Swap striker on odd runs (off bat only) or end of over.
+          // Guard: only swap when there IS a non-striker (last-batsman mode skips swaps).
           let { strikerId, nonStrikerId } = innings
           const endOfOver = ball.isLegal && newLegalBalls % 6 === 0
 
-          if (ball.isLegal && !ball.isWicket) {
+          if (nonStrikerId && ball.isLegal && !ball.isWicket) {
             if (ball.runsOffBat % 2 === 1) {
               ;[strikerId, nonStrikerId] = [nonStrikerId, strikerId]
             }
           }
-          if (endOfOver && !ball.isWicket) {
+          if (nonStrikerId && endOfOver && !ball.isWicket) {
             ;[strikerId, nonStrikerId] = [nonStrikerId, strikerId]
           }
 
