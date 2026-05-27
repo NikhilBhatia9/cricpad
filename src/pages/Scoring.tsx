@@ -118,13 +118,13 @@ export default function Scoring() {
 
   // ── 2. Fielder selection after Caught / Stumped / Run Out ──
   if (showFielderSelect && pendingWicketType) {
+    const fielderIcon = pendingWicketType === 'Caught' ? '\uD83D\uDC50' : pendingWicketType === 'Stumped' ? '\uD83E\uDDE4' : '\u26A1'
+    const fielderTitle = pendingWicketType === 'Caught' ? `${fielderIcon} Who caught it?` :
+      pendingWicketType === 'Stumped' ? `${fielderIcon} Who stumped?` :
+      `${fielderIcon} Who ran them out?`
     return (
       <div className="px-4 py-6 max-w-lg mx-auto">
-        <h2 className="text-xl font-bold mb-2 text-center">
-          {pendingWicketType === 'Caught' ? '&#x1F450; Who caught it?' :
-           pendingWicketType === 'Stumped' ? '&#x1F9E4; Who stumped?' :
-           '&#x26A1; Who ran them out?'}
-        </h2>
+        <h2 className="text-xl font-bold mb-2 text-center">{fielderTitle}</h2>
         <p className="text-gray-400 text-sm text-center mb-5">Select the fielder</p>
         <div className="grid grid-cols-2 gap-3 mb-4">
           {fieldingTeam.players.map((p) => (
@@ -133,7 +133,7 @@ export default function Scoring() {
               onClick={() => commitWicket(pendingWicketType!, p.id, p.name)}
               className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-4 rounded-2xl text-lg transition-colors"
             >
-              {pendingWicketType === 'Stumped' ? '&#x1F9E4; ' : pendingWicketType === 'Caught' ? '&#x1F450; ' : '&#x26A1; '}{p.name}
+              {fielderIcon} {p.name}
             </button>
           ))}
         </div>
