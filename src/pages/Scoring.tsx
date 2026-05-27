@@ -2,16 +2,75 @@
 import { useNavigate } from 'react-router-dom'
 import { useMatchStore } from '../store/matchStore'
 import { oversDisplay, runRate, requiredRunRate, currentOverBalls, ballColorClass } from '../utils/cricket'
-import type { WicketType, ExtraType } from '../types/cricket'
+import type { WicketType, ExtraType, Over } from '../types/cricket'
 import PlayerSelector from '../components/PlayerSelector'
 import ShareMatchModal from '../components/ShareMatchModal'
 
 const WICKET_TYPES: WicketType[] = ['Bowled', 'Caught', 'LBW', 'Run Out', 'Stumped', 'Hit Wicket', 'Retired']
 const FIELDER_WICKETS: WicketType[] = ['Caught', 'Run Out', 'Stumped']
 
+const EXTRA_LABELS: Record<ExtraType, string> = {
+  wide: 'Wide',
+  noball: 'No Ball',
+  bye: 'Bye',
+  legbye: 'Leg Bye',
+}
+
+function OverSummary({ over, bowlerName, onContinue }: { over: Over; bowlerName: string; onContinue: () => void }) {
+  const balls = over.balls
+  const runsInOver = balls.reduce((s, b) => s + b.runsOffBat + b.extras, 0)
+  const wicketsInOver = balls.filter((b) => b.isWicket).length
+  const legalBalls = balls.filter((b) => b.isLegal).length
+  const isMaiden = legalBalls >= 6 && runsInOver === 0
+  const ballDisplay = currentOverBalls({ ...over, balls })
+
+  return (
+    <div className="flex flex-col min-h-screen items-center justify-center px-6 text-center">
+      <div className="w-full max-w-sm">
+        <div className="text-5xl mb-3">{isMaiden ? '\uD83D\uDD07' : wicketsInOver > 0 ? '\uD83C\uDFAF' : '\uD83C\uDFCF'}</div>
+        <h2 className="text-2xl font-bold mb-1">Over {over.number} Complete</h2>
+        <p className="text-gray-400 text-sm mb-5">{bowlerName}</p>
+
+        {isMaiden && (
+          <div className="bg-teal-500/20 border border-teal-500/40 text-teal-300 font-bold px-4 py-2 rounded-full text-sm mb-4 inline-block">
+            MAIDEN OVER!
+          </div>
+        )}
+
+        {/* Ball dots */}
+        <div className="flex gap-2 justify-center mb-6 flex-wrap">
+          {ballDisplay.map((b, i) => (
+            <div key={i} className={`ball-dot text-sm ${ballColorClass(b)}`}>{b}</div>
+          ))}
+        </div>
+
+        {/* Stats row */}
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          <div className="bg-gray-800 rounded-xl py-3">
+            <p className="text-2xl font-bold text-white">{runsInOver}</p>
+            <p className="text-xs text-gray-500">Runs</p>
+          </div>
+          <div className="bg-gray-800 rounded-xl py-3">
+            <p className="text-2xl font-bold text-red-400">{wicketsInOver}</p>
+            <p className="text-xs text-gray-500">Wickets</p>
+          </div>
+          <div className="bg-gray-800 rounded-xl py-3">
+            <p className="text-2xl font-bold text-yellow-400">{legalBalls > 0 ? ((runsInOver / legalBalls) * 6).toFixed(1) : '0.0'}</p>
+            <p className="text-xs text-gray-500">Economy</p>
+          </div>
+        </div>
+
+        <button onClick={onContinue} className="btn-primary">
+          Next Over &rarr;
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function Scoring() {
   const navigate = useNavigate()
-  const { match, setBatsmen, setBowler, recordBall, undoLastBall } = useMatchStore()
+  const { match, setBatsmen, setBowler, recordBall, undoLastBall, undoHistory } = useMatchStore()
 
   const [showWicketModal, setShowWicketModal] = useState(false)
   const [pendingExtra, setPendingExtra] = useState<ExtraType | null>(null)
@@ -19,6 +78,7 @@ export default function Scoring() {
   const [showNewBatsman, setShowNewBatsman] = useState(false)
   const [pendingWicketType, setPendingWicketType] = useState<WicketType | null>(null)
   const [showFielderSelect, setShowFielderSelect] = useState(false)
+  const [overSummaryDismissed, setOverSummaryDismissed] = useState(-1)
 
   if (!match) return <div className="p-6 text-center">No match. <button onClick={() => navigate('/')} className="text-green-400">Go home</button></div>
 
@@ -98,7 +158,7 @@ export default function Scoring() {
     setShowNewBatsman(true)
   }
 
-  // ── 1. New batsman after wicket (must come BEFORE needsBatsmen check) ──
+  // ── 1. New batsman after wicket ──
   if (showNewBatsman) {
     return (
       <PlayerSelector
@@ -116,7 +176,7 @@ export default function Scoring() {
     )
   }
 
-  // ── 2. Fielder selection after Caught / Stumped / Run Out ──
+  // ── 2. Fielder selection ──
   if (showFielderSelect && pendingWicketType) {
     const fielderIcon = pendingWicketType === 'Caught' ? '\uD83D\uDC50' : pendingWicketType === 'Stumped' ? '\uD83E\uDDE4' : '\u26A1'
     const fielderTitle = pendingWicketType === 'Caught' ? `${fielderIcon} Who caught it?` :
@@ -147,21 +207,13 @@ export default function Scoring() {
     )
   }
 
-  // ── 3. Opening batsmen selector (start of innings) ──
+  // ── 3. Opening batsmen ──
   if (needsBatsmen) {
     return (
       <PlayerSelector
         title="Select Opening Batsmen"
         players={battingTeam.players}
         exclude={Object.keys(innings.batsmen).filter((id) => innings.batsmen[id].isOut)}
-        onSelect={(id) => {
-          if (!innings.strikerId) {
-            setBatsmen(id, innings.nonStrikerId ?? '')
-          } else {
-            setBatsmen(innings.strikerId, id)
-          }
-        }}
-        onConfirm={() => {}}
         isTwoStep
         currentStriker={innings.strikerId}
         currentNonStriker={innings.nonStrikerId}
@@ -170,11 +222,24 @@ export default function Scoring() {
     )
   }
 
-  // ── 4. Bowler selector ──
+  // ── 4. Over summary (after over ends, before bowler select) ──
+  if (isNewOver && innings.totalLegalBalls !== overSummaryDismissed) {
+    const justCompletedOver = innings.overs[innings.overs.length - 1]
+    const bowlerName = justCompletedOver ? (innings.bowlers[justCompletedOver.bowlerId]?.name ?? 'Unknown') : 'Unknown'
+    return (
+      <OverSummary
+        over={justCompletedOver}
+        bowlerName={bowlerName}
+        onContinue={() => setOverSummaryDismissed(innings.totalLegalBalls)}
+      />
+    )
+  }
+
+  // ── 5. Bowler selector ──
   if (needsBowler || isNewOver) {
     return (
       <PlayerSelector
-        title={`Select Bowler — Over ${overNum}`}
+        title={`Select Bowler ${'\u2014'} Over ${overNum}`}
         players={fieldingTeam.players}
         exclude={lastOverBowlerId ? [lastOverBowlerId] : []}
         onSelect={(id) => { setBowler(id) }}
@@ -183,11 +248,11 @@ export default function Scoring() {
     )
   }
 
-  // ── 5. Wicket type modal ──
+  // ── 6. Wicket type modal ──
   if (showWicketModal) {
     return (
       <div className="flex flex-col min-h-screen px-4 py-6">
-        <h2 className="text-xl font-bold mb-6 text-center text-red-400">&#x1F6A8; Wicket! — How out?</h2>
+        <h2 className="text-xl font-bold mb-6 text-center text-red-400">Wicket! How out?</h2>
         <div className="grid grid-cols-2 gap-3">
           {WICKET_TYPES.map((t) => (
             <button
@@ -222,7 +287,7 @@ export default function Scoring() {
               className="bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors"
               onClick={() => setShowShare(true)}
             >
-              &#x1F517; Share
+              Share
             </button>
             <p className="text-xs text-gray-400">{match.maxOvers} overs</p>
             {innings.target && (
@@ -244,7 +309,7 @@ export default function Scoring() {
           {overBalls.map((b, i) => (
             <div key={i} className={`ball-dot ${ballColorClass(b)}`}>{b}</div>
           ))}
-          {overBalls.length === 0 && <p className="text-xs text-gray-500">Over {overNum} \u2014 no balls yet</p>}
+          {overBalls.length === 0 && <p className="text-xs text-gray-500">Over {overNum} {'\u2014'} no balls yet</p>}
         </div>
       </div>
 
@@ -261,7 +326,15 @@ export default function Scoring() {
         {bowler && (
           <div className="bg-gray-800 rounded-xl px-3 py-2 text-sm">
             <p className="text-gray-400 text-xs">Bowling</p>
-            <p className="font-semibold">{bowler.name} \u00b7 {Math.floor(bowler.legalBalls / 6)}.{bowler.legalBalls % 6} ov \u00b7 {bowler.wickets}w \u00b7 {bowler.runsConceded}r</p>
+            <p className="font-semibold">
+              {bowler.name}
+              {' \u00b7 '}
+              {Math.floor(bowler.legalBalls / 6)}.{bowler.legalBalls % 6} ov
+              {' \u00b7 '}
+              {bowler.wickets}w
+              {' \u00b7 '}
+              {bowler.runsConceded}r
+            </p>
           </div>
         )}
       </div>
@@ -273,14 +346,20 @@ export default function Scoring() {
             <button
               key={e}
               onClick={() => setPendingExtra(pendingExtra === e ? null : e)}
-              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                pendingExtra === e ? 'bg-yellow-500 text-black' : 'bg-gray-700 text-white'
+              className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${
+                pendingExtra === e ? 'bg-yellow-400 text-black ring-2 ring-yellow-300' : 'bg-gray-700 text-gray-300'
               }`}
             >
-              {e === 'wide' ? 'Wd' : e === 'noball' ? 'Nb' : e === 'bye' ? 'B' : 'Lb'}
+              {EXTRA_LABELS[e]}
             </button>
           ))}
         </div>
+
+        {pendingExtra && (
+          <div className="bg-yellow-400/10 border border-yellow-400/30 rounded-lg px-3 py-1.5 mb-3 text-center">
+            <p className="text-yellow-300 text-sm font-semibold">{EXTRA_LABELS[pendingExtra]} selected {'\u2014'} tap runs scored</p>
+          </div>
+        )}
 
         {/* Run buttons */}
         <div className="grid grid-cols-4 gap-3 mb-3">
@@ -308,8 +387,16 @@ export default function Scoring() {
 
       {/* Footer actions */}
       <div className="px-4 pb-6 flex gap-3 mt-auto pt-2">
-        <button onClick={undoLastBall} className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-xl text-sm font-semibold">
-          &#x21A9; Undo
+        <button
+          onClick={undoLastBall}
+          disabled={undoHistory.length === 0}
+          className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-colors ${
+            undoHistory.length > 0
+              ? 'bg-gray-700 hover:bg-gray-600 text-white'
+              : 'bg-gray-800 text-gray-600 cursor-not-allowed'
+          }`}
+        >
+          &#x21A9; Undo{undoHistory.length > 0 ? ` (${undoHistory.length})` : ''}
         </button>
         <button onClick={() => navigate('/')} className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-xl text-sm font-semibold">
           &#x1F3E0; Menu

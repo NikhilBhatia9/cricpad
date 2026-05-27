@@ -8,6 +8,7 @@ import type {
 interface MatchStore {
   match: Match | null
   roomCode: string | null
+  undoHistory: Innings[]
 
   // Setup
   createMatch: (teams: [Team, Team], maxOvers: number) => void
@@ -53,6 +54,7 @@ export const useMatchStore = create<MatchStore>()(
     (set) => ({
       match: null,
       roomCode: null,
+      undoHistory: [],
 
       createMatch: (teams, maxOvers) => {
         const match: Match = {
@@ -150,6 +152,9 @@ export const useMatchStore = create<MatchStore>()(
           const idx = s.match.currentInningsIndex
           const innings = s.match.innings[idx]
           if (!innings || !innings.strikerId || !innings.bowlerId) return s
+
+          // Snapshot for undo (keep last 6)
+          const newUndoHistory = [...s.undoHistory, innings].slice(-6)
 
           const ball: BallEvent = { ...ballData, id: uuidv4() }
           const batsmen = { ...innings.batsmen }
@@ -268,26 +273,22 @@ export const useMatchStore = create<MatchStore>()(
             }
           }
 
-          return { match: { ...s.match, innings: newInnings, status: newStatus, result } }
+          return { match: { ...s.match, innings: newInnings, status: newStatus, result }, undoHistory: newUndoHistory }
         })
       },
 
       undoLastBall: () => {
-        // Simplified: reload from persisted state would be ideal; here we just pop last ball
         set((s) => {
-          if (!s.match) return s
+          if (!s.match || s.undoHistory.length === 0) return s
           const idx = s.match.currentInningsIndex
-          const innings = s.match.innings[idx]
-          if (!innings || innings.overs.length === 0) return s
-
-          const overs = innings.overs.map((o) => ({ ...o, balls: [...o.balls] }))
-          const lastOver = overs[overs.length - 1]
-          if (lastOver.balls.length === 0) return s
-          lastOver.balls.pop()
-
+          const prevInnings = s.undoHistory[s.undoHistory.length - 1]
+          const newUndoHistory = s.undoHistory.slice(0, -1)
           const newInnings = [...s.match.innings] as [Innings | null, Innings | null]
-          newInnings[idx] = { ...innings, overs }
-          return { match: { ...s.match, innings: newInnings } }
+          newInnings[idx] = prevInnings
+          return {
+            match: { ...s.match, innings: newInnings, status: 'live' },
+            undoHistory: newUndoHistory,
+          }
         })
       },
 
@@ -307,6 +308,7 @@ export const useMatchStore = create<MatchStore>()(
               currentInningsIndex: 1,
               status: 'live',
             },
+            undoHistory: [],
           }
         })
       },
@@ -318,7 +320,7 @@ export const useMatchStore = create<MatchStore>()(
         })
       },
 
-      resetMatch: () => set({ match: null, roomCode: null }),
+      resetMatch: () => set({ match: null, roomCode: null, undoHistory: [] }),
 
       setRoomCode: (code) => set({ roomCode: code }),
 
