@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { fetchPlayer, fetchPlayerStats, fetchMatchesByIds, computeCareerBatting, computeCareerBowling } from '../db/operations'
+import { fetchPlayer, fetchPlayerStats, fetchMatchesByIds, computeCareerBatting, computeCareerBowling, computeCareerFielding } from '../db/operations'
 import type { PlayerRecord, MatchRecord, PlayerMatchStat } from '../db/types'
 import BackButton from '../components/BackButton'
 
@@ -48,6 +48,7 @@ export default function PlayerDetail() {
 
   const bat = computeCareerBatting(stats)
   const bowl = computeCareerBowling(stats)
+  const field = computeCareerFielding(stats)
   const matchIds = [...new Set(stats.map((s) => s.matchId))]
 
   return (
@@ -61,6 +62,11 @@ export default function PlayerDetail() {
         <div className="text-5xl mb-2">&#x1F3CF;</div>
         <h1 className="text-2xl font-bold">{player.name}</h1>
         <p className="text-gray-400 text-sm mt-1">{matchIds.length} match{matchIds.length !== 1 ? 'es' : ''} played</p>
+        {bat.mvpWins > 0 && (
+          <div className="mt-3 inline-flex items-center gap-2 bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 px-4 py-1.5 rounded-full text-sm font-semibold">
+            &#x1F3C6; MVP &times; {bat.mvpWins}
+          </div>
+        )}
       </div>
 
       {/* Batting */}
@@ -79,7 +85,7 @@ export default function PlayerDetail() {
             <StatBox label="50s" value={bat.fifties} />
             <StatBox label="100s" value={bat.hundreds} />
           </div>
-          <div className="mt-2 pt-2 border-t border-gray-700 flex gap-4 text-sm text-gray-400">
+          <div className="mt-2 pt-2 border-t border-gray-700 flex gap-4 text-sm text-gray-400 flex-wrap">
             <span>Not Outs: <strong className="text-white">{bat.notOuts}</strong></span>
             <span>4s: <strong className="text-white">{bat.fours}</strong></span>
             <span>6s: <strong className="text-white">{bat.sixes}</strong></span>
@@ -103,8 +109,18 @@ export default function PlayerDetail() {
             <StatBox label="S/R" value={bowl.strikeRate} />
             <StatBox label="Best" value={`${bowl.bestWickets}/${bowl.bestRuns}`} />
           </div>
-          <div className="mt-2 pt-2 border-t border-gray-700 flex gap-4 text-sm text-gray-400">
-            <span>Matches: <strong className="text-white">{bowl.matches}</strong></span>
+        </div>
+      )}
+
+      {/* Fielding */}
+      {field.total > 0 && (
+        <div className="card mb-4">
+          <h2 className="font-semibold text-gray-300 mb-3">&#x1F9E4; Fielding</h2>
+          <div className="grid grid-cols-4 gap-2">
+            <StatBox label="Total" value={field.total} highlight />
+            <StatBox label="Catches" value={field.catches} />
+            <StatBox label="Run Outs" value={field.runOuts} />
+            <StatBox label="Stumpings" value={field.stumpings} />
           </div>
         </div>
       )}
@@ -118,6 +134,7 @@ export default function PlayerDetail() {
               const playerStat = stats.filter((s) => s.matchId === m.id)
               const batStat = playerStat.find((s) => s.batDidBat)
               const bowlStat = playerStat.find((s) => s.bowlDidBowl)
+              const isMvp = playerStat.some((s) => s.isMvp)
               return (
                 <button
                   key={m.id}
@@ -125,7 +142,10 @@ export default function PlayerDetail() {
                   onClick={() => navigate(`/history/${m.id}`)}
                 >
                   <div className="flex justify-between items-center">
-                    <p className="text-sm font-medium">{m.teamAName} vs {m.teamBName}</p>
+                    <p className="text-sm font-medium">
+                      {m.teamAName} vs {m.teamBName}
+                      {isMvp && <span className="ml-2 text-yellow-400 text-xs">&#x1F3C6; MVP</span>}
+                    </p>
                     <p className="text-xs text-gray-500">{new Date(m.completedAt).toLocaleDateString()}</p>
                   </div>
                   <div className="flex gap-3 mt-1 text-xs text-gray-400">

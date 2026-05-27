@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMatchStore } from '../store/matchStore'
 import { oversDisplay, runRate, requiredRunRate, currentOverBalls, ballColorClass } from '../utils/cricket'
@@ -7,6 +7,7 @@ import PlayerSelector from '../components/PlayerSelector'
 import ShareMatchModal from '../components/ShareMatchModal'
 
 const WICKET_TYPES: WicketType[] = ['Bowled', 'Caught', 'LBW', 'Run Out', 'Stumped', 'Hit Wicket', 'Retired']
+const FIELDER_WICKETS: WicketType[] = ['Caught', 'Run Out', 'Stumped']
 
 export default function Scoring() {
   const navigate = useNavigate()
@@ -15,7 +16,9 @@ export default function Scoring() {
   const [showWicketModal, setShowWicketModal] = useState(false)
   const [pendingExtra, setPendingExtra] = useState<ExtraType | null>(null)
   const [showShare, setShowShare] = useState(false)
-  const [showPlayerSelect, setShowPlayerSelect] = useState<'striker' | 'nonStriker' | 'bowler' | null>(null)
+  const [showNewBatsman, setShowNewBatsman] = useState(false)
+  const [pendingWicketType, setPendingWicketType] = useState<WicketType | null>(null)
+  const [showFielderSelect, setShowFielderSelect] = useState(false)
 
   if (!match) return <div className="p-6 text-center">No match. <button onClick={() => navigate('/')} className="text-green-400">Go home</button></div>
 
@@ -39,7 +42,6 @@ export default function Scoring() {
 
   const needsBatsmen = !innings.strikerId || !innings.nonStrikerId
   const needsBowler = !innings.bowlerId
-  // isNewOver: end of an over AND the next over hasn't been started yet
   const isNewOver = innings.totalLegalBalls > 0 &&
     innings.totalLegalBalls % 6 === 0 &&
     innings.overs.length < Math.floor(innings.totalLegalBalls / 6) + 1
@@ -48,7 +50,6 @@ export default function Scoring() {
   const nonStriker = innings.nonStrikerId ? innings.batsmen[innings.nonStrikerId] : null
   const bowler = innings.bowlerId ? innings.bowlers[innings.bowlerId] : null
 
-  // The bowler who just finished cannot bowl the immediate next over
   const lastOverBowlerId = isNewOver && innings.overs.length > 0
     ? innings.overs[innings.overs.length - 1].bowlerId
     : null
@@ -69,22 +70,84 @@ export default function Scoring() {
     setPendingExtra(null)
   }
 
-  function recordWicket(type: WicketType) {
+  function handleWicketType(type: WicketType) {
+    setShowWicketModal(false)
+    if (FIELDER_WICKETS.includes(type)) {
+      setPendingWicketType(type)
+      setShowFielderSelect(true)
+    } else {
+      commitWicket(type, undefined, undefined)
+    }
+  }
+
+  function commitWicket(type: WicketType, fielderId: string | undefined, fielderName: string | undefined) {
     if (!innings!.strikerId || !innings!.bowlerId) return
     recordBall({
       runsOffBat: 0,
       extras: 0,
       isWicket: true,
       wicketType: type,
+      fielderId,
+      fielderName,
       strikerId: innings!.strikerId!,
       bowlerId: innings!.bowlerId!,
       isLegal: true,
     })
-    setShowWicketModal(false)
-    setShowPlayerSelect('striker')
+    setPendingWicketType(null)
+    setShowFielderSelect(false)
+    setShowNewBatsman(true)
   }
 
-  // Setup screens
+  // ── 1. New batsman after wicket (must come BEFORE needsBatsmen check) ──
+  if (showNewBatsman) {
+    return (
+      <PlayerSelector
+        title="New Batsman"
+        players={battingTeam.players}
+        exclude={[
+          ...Object.keys(innings.batsmen).filter((id) => innings.batsmen[id].isOut),
+          innings.nonStrikerId ?? '',
+        ]}
+        onSelect={(id) => {
+          setBatsmen(id, innings.nonStrikerId ?? '')
+          setShowNewBatsman(false)
+        }}
+      />
+    )
+  }
+
+  // ── 2. Fielder selection after Caught / Stumped / Run Out ──
+  if (showFielderSelect && pendingWicketType) {
+    return (
+      <div className="px-4 py-6 max-w-lg mx-auto">
+        <h2 className="text-xl font-bold mb-2 text-center">
+          {pendingWicketType === 'Caught' ? '&#x1F450; Who caught it?' :
+           pendingWicketType === 'Stumped' ? '&#x1F9E4; Who stumped?' :
+           '&#x26A1; Who ran them out?'}
+        </h2>
+        <p className="text-gray-400 text-sm text-center mb-5">Select the fielder</p>
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          {fieldingTeam.players.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => commitWicket(pendingWicketType!, p.id, p.name)}
+              className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-4 rounded-2xl text-lg transition-colors"
+            >
+              {pendingWicketType === 'Stumped' ? '&#x1F9E4; ' : pendingWicketType === 'Caught' ? '&#x1F450; ' : '&#x26A1; '}{p.name}
+            </button>
+          ))}
+        </div>
+        <button
+          className="btn-secondary w-full"
+          onClick={() => commitWicket(pendingWicketType!, undefined, undefined)}
+        >
+          Skip (unknown fielder)
+        </button>
+      </div>
+    )
+  }
+
+  // ── 3. Opening batsmen selector (start of innings) ──
   if (needsBatsmen) {
     return (
       <PlayerSelector
@@ -98,7 +161,7 @@ export default function Scoring() {
             setBatsmen(innings.strikerId, id)
           }
         }}
-        onConfirm={() => setShowPlayerSelect(null)}
+        onConfirm={() => {}}
         isTwoStep
         currentStriker={innings.strikerId}
         currentNonStriker={innings.nonStrikerId}
@@ -107,6 +170,7 @@ export default function Scoring() {
     )
   }
 
+  // ── 4. Bowler selector ──
   if (needsBowler || isNewOver) {
     return (
       <PlayerSelector
@@ -119,16 +183,16 @@ export default function Scoring() {
     )
   }
 
-  // Wicket modal
+  // ── 5. Wicket type modal ──
   if (showWicketModal) {
     return (
       <div className="flex flex-col min-h-screen px-4 py-6">
-        <h2 className="text-xl font-bold mb-6 text-center text-red-400">Wicket! — How out?</h2>
+        <h2 className="text-xl font-bold mb-6 text-center text-red-400">&#x1F6A8; Wicket! — How out?</h2>
         <div className="grid grid-cols-2 gap-3">
           {WICKET_TYPES.map((t) => (
             <button
               key={t}
-              onClick={() => recordWicket(t)}
+              onClick={() => handleWicketType(t)}
               className="bg-red-700 hover:bg-red-600 text-white font-semibold py-4 rounded-xl text-lg"
             >
               {t}
@@ -137,24 +201,6 @@ export default function Scoring() {
         </div>
         <button className="btn-secondary mt-4" onClick={() => setShowWicketModal(false)}>Cancel</button>
       </div>
-    )
-  }
-
-  // New batsman selector after wicket
-  if (showPlayerSelect === 'striker') {
-    return (
-      <PlayerSelector
-        title="New Batsman"
-        players={battingTeam.players}
-        exclude={[
-          ...Object.keys(innings.batsmen).filter((id) => innings.batsmen[id].isOut),
-          innings.nonStrikerId ?? '',
-        ]}
-        onSelect={(id) => {
-          setBatsmen(id, innings.nonStrikerId ?? '')
-          setShowPlayerSelect(null)
-        }}
-      />
     )
   }
 
@@ -168,7 +214,7 @@ export default function Scoring() {
             <p className="text-4xl font-bold">{innings.totalRuns}<span className="text-2xl text-gray-400">/{innings.totalWickets}</span></p>
             <p className="text-gray-400 text-sm">
               {oversDisplay(innings.totalLegalBalls)} ov
-              {' · '}RR {runRate(innings.totalRuns, innings.totalLegalBalls)}
+              {' \u00b7 '}RR {runRate(innings.totalRuns, innings.totalLegalBalls)}
             </p>
           </div>
           <div className="text-right flex flex-col items-end gap-2">
@@ -176,7 +222,7 @@ export default function Scoring() {
               className="bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors"
               onClick={() => setShowShare(true)}
             >
-              🔗 Share
+              &#x1F517; Share
             </button>
             <p className="text-xs text-gray-400">{match.maxOvers} overs</p>
             {innings.target && (
@@ -198,7 +244,7 @@ export default function Scoring() {
           {overBalls.map((b, i) => (
             <div key={i} className={`ball-dot ${ballColorClass(b)}`}>{b}</div>
           ))}
-          {overBalls.length === 0 && <p className="text-xs text-gray-500">Over {overNum} — no balls yet</p>}
+          {overBalls.length === 0 && <p className="text-xs text-gray-500">Over {overNum} \u2014 no balls yet</p>}
         </div>
       </div>
 
@@ -207,7 +253,7 @@ export default function Scoring() {
         <div className="flex gap-2 text-sm mb-2">
           {[striker, nonStriker].map((b, i) => b && (
             <div key={i} className={`flex-1 bg-gray-800 rounded-xl px-3 py-2 ${i === 0 ? 'border border-green-600' : ''}`}>
-              <p className="font-semibold truncate">{b.name} {i === 0 ? '⚡' : ''}</p>
+              <p className="font-semibold truncate">{b.name} {i === 0 ? '\u26a1' : ''}</p>
               <p className="text-gray-400">{b.runs}<span className="text-xs"> ({b.balls})</span></p>
             </div>
           ))}
@@ -215,7 +261,7 @@ export default function Scoring() {
         {bowler && (
           <div className="bg-gray-800 rounded-xl px-3 py-2 text-sm">
             <p className="text-gray-400 text-xs">Bowling</p>
-            <p className="font-semibold">{bowler.name} · {Math.floor(bowler.legalBalls / 6)}.{bowler.legalBalls % 6} ov · {bowler.wickets}w · {bowler.runsConceded}r</p>
+            <p className="font-semibold">{bowler.name} \u00b7 {Math.floor(bowler.legalBalls / 6)}.{bowler.legalBalls % 6} ov \u00b7 {bowler.wickets}w \u00b7 {bowler.runsConceded}r</p>
           </div>
         )}
       </div>
@@ -263,10 +309,10 @@ export default function Scoring() {
       {/* Footer actions */}
       <div className="px-4 pb-6 flex gap-3 mt-auto pt-2">
         <button onClick={undoLastBall} className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-xl text-sm font-semibold">
-          ↩ Undo
+          &#x21A9; Undo
         </button>
         <button onClick={() => navigate('/')} className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-xl text-sm font-semibold">
-          🏠 Menu
+          &#x1F3E0; Menu
         </button>
       </div>
 

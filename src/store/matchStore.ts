@@ -35,6 +35,7 @@ function createInnings(battingTeamIndex: 0 | 1, target?: number): Innings {
     overs: [],
     batsmen: {},
     bowlers: {},
+    fielders: {},
     strikerId: null,
     nonStrikerId: null,
     bowlerId: null,
@@ -167,8 +168,23 @@ export const useMatchStore = create<MatchStore>()(
             striker.isOut = true
             striker.wicketType = ball.wicketType
             striker.bowledBy = bowler.name
+            if (ball.fielderName) striker.fielderName = ball.fielderName
+          } else if (ball.isWicket && ball.wicketType === 'Run Out') {
+            striker.isOut = true
+            striker.wicketType = ball.wicketType
+            if (ball.fielderName) striker.fielderName = ball.fielderName
           }
           batsmen[ball.strikerId] = striker
+
+          // Update fielder stats
+          const fielders = { ...innings.fielders }
+          if (ball.isWicket && ball.fielderId && ball.fielderName) {
+            const existing = fielders[ball.fielderId]
+            const base = existing ?? { playerId: ball.fielderId, name: ball.fielderName, catches: 0, runOuts: 0, stumpings: 0 }
+            if (ball.wicketType === 'Caught') fielders[ball.fielderId] = { ...base, catches: base.catches + 1 }
+            else if (ball.wicketType === 'Stumped') fielders[ball.fielderId] = { ...base, stumpings: base.stumpings + 1 }
+            else if (ball.wicketType === 'Run Out') fielders[ball.fielderId] = { ...base, runOuts: base.runOuts + 1 }
+          }
 
           // Update bowler
           const totalBallRuns = ball.runsOffBat + ball.extras
@@ -222,6 +238,7 @@ export const useMatchStore = create<MatchStore>()(
             overs,
             batsmen,
             bowlers,
+            fielders,
             extras,
             strikerId: ball.isWicket ? null : strikerId,
             nonStrikerId: ball.isWicket ? nonStrikerId : nonStrikerId,

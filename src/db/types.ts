@@ -38,6 +38,12 @@ export interface PlayerMatchStat {
   bowlNoBalls: number
   bowlMaidens: number
   bowlDidBowl: boolean
+  // Fielding
+  fieldCatches: number
+  fieldRunOuts: number
+  fieldStumpings: number
+  // MVP
+  isMvp: boolean
 }
 
 export interface CareerBatting {
@@ -52,6 +58,7 @@ export interface CareerBatting {
   hundreds: number
   fours: number
   sixes: number
+  mvpWins: number
 }
 
 export interface CareerBowling {
@@ -65,4 +72,11 @@ export interface CareerBowling {
   strikeRate: string
   bestWickets: number
   bestRuns: number
+}
+
+export interface CareerFielding {
+  catches: number
+  runOuts: number
+  stumpings: number
+  total: number
 }

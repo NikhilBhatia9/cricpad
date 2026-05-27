@@ -21,6 +21,8 @@ export interface BallEvent {
   extraType?: ExtraType
   isWicket: boolean
   wicketType?: WicketType
+  fielderId?: string
+  fielderName?: string
   strikerId: string
   bowlerId: string
   /** false for wides/noballs — ball not counted in over */
@@ -43,6 +45,7 @@ export interface BatsmanScore {
   isOut: boolean
   wicketType?: WicketType
   bowledBy?: string
+  fielderName?: string   // name of catcher/stumper/run-out fielder
   battingPosition: number
 }
 
@@ -54,6 +57,14 @@ export interface BowlerScore {
   wickets: number
   wides: number
   noBalls: number
+}
+
+export interface FielderScore {
+  playerId: string
+  name: string
+  catches: number
+  runOuts: number
+  stumpings: number
 }
 
 export interface InningsExtras {
@@ -68,6 +79,7 @@ export interface Innings {
   overs: Over[]
   batsmen: Record<string, BatsmanScore>
   bowlers: Record<string, BowlerScore>
+  fielders: Record<string, FielderScore>
   strikerId: string | null
   nonStrikerId: string | null
   bowlerId: string | null

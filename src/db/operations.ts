@@ -1,6 +1,7 @@
 ﻿import { supabase } from '../config/supabase'
 import type { Match } from '../types/cricket'
-import type { PlayerRecord, MatchRecord, PlayerMatchStat, CareerBatting, CareerBowling } from './types'
+import type { PlayerRecord, MatchRecord, PlayerMatchStat, CareerBatting, CareerBowling, CareerFielding } from './types'
+import { computeMvp } from '../utils/mvp'
 
 // ─── Row mappers (DB snake_case → TS camelCase) ────────────────────────────
 
@@ -47,6 +48,10 @@ function rowToStat(r: Record<string, unknown>): PlayerMatchStat {
     bowlNoBalls: r.bowl_no_balls as number,
     bowlMaidens: r.bowl_maidens as number,
     bowlDidBowl: r.bowl_did_bowl as boolean,
+    fieldCatches: (r.field_catches as number) ?? 0,
+    fieldRunOuts: (r.field_runouts as number) ?? 0,
+    fieldStumpings: (r.field_stumpings as number) ?? 0,
+    isMvp: (r.is_mvp as boolean) ?? false,
   }
 }
 
@@ -152,11 +157,21 @@ export async function saveMatch(match: Match): Promise<void> {
   // Build per-player stats
   const statsToAdd: Record<string, unknown>[] = []
 
+  // Compute MVP
+  const mvp = computeMvp(match)
+  const mvpName = mvp?.player.name ?? null
+
   for (const innings of match.innings) {
     if (!innings) continue
     const battingTeam = match.teams[innings.battingTeamIndex]
     const fieldingTeamIndex: 0 | 1 = innings.battingTeamIndex === 0 ? 1 : 0
     const fieldingTeam = match.teams[fieldingTeamIndex]
+
+    // Build fielding lookup for this innings
+    const fielderStats: Record<string, { catches: number; runOuts: number; stumpings: number }> = {}
+    for (const [id, f] of Object.entries(innings.fielders ?? {})) {
+      fielderStats[id] = { catches: f.catches, runOuts: f.runOuts, stumpings: f.stumpings }
+    }
 
     for (const b of Object.values(innings.batsmen)) {
       statsToAdd.push({
@@ -166,6 +181,8 @@ export async function saveMatch(match: Match): Promise<void> {
         bat_is_out: b.isOut, bat_wicket_type: b.wicketType ?? null, bat_did_bat: true,
         bowl_legal_balls: 0, bowl_runs_conceded: 0, bowl_wickets: 0,
         bowl_wides: 0, bowl_no_balls: 0, bowl_maidens: 0, bowl_did_bowl: false,
+        field_catches: 0, field_runouts: 0, field_stumpings: 0,
+        is_mvp: b.name === mvpName,
       })
     }
 
@@ -184,6 +201,9 @@ export async function saveMatch(match: Match): Promise<void> {
     }
 
     for (const b of Object.values(innings.bowlers)) {
+      // Find player id to look up fielding
+      const player = fieldingTeam.players.find((p) => p.name === b.name)
+      const fs = player ? (fielderStats[player.id] ?? { catches: 0, runOuts: 0, stumpings: 0 }) : { catches: 0, runOuts: 0, stumpings: 0 }
       statsToAdd.push({
         match_id: match.id, player_name: b.name, team_name: fieldingTeam.name,
         opponent: battingTeam.name, match_date: completedAt,
@@ -193,6 +213,8 @@ export async function saveMatch(match: Match): Promise<void> {
         bowl_wickets: b.wickets, bowl_wides: b.wides, bowl_no_balls: b.noBalls,
         bowl_maidens: maidensByBowler[b.playerId] ?? 0,
         bowl_did_bowl: true,
+        field_catches: fs.catches, field_runouts: fs.runOuts, field_stumpings: fs.stumpings,
+        is_mvp: b.name === mvpName,
       })
     }
   }
@@ -221,7 +243,15 @@ export function computeCareerBatting(stats: PlayerMatchStat[]): CareerBatting {
     hundreds: bat.filter((s) => s.batRuns >= 100).length,
     fours: bat.reduce((sum, s) => sum + s.batFours, 0),
     sixes: bat.reduce((sum, s) => sum + s.batSixes, 0),
+    mvpWins: stats.filter((s) => s.isMvp).length,
   }
+}
+
+export function computeCareerFielding(stats: PlayerMatchStat[]): CareerFielding {
+  const catches = stats.reduce((sum, s) => sum + (s.fieldCatches ?? 0), 0)
+  const runOuts = stats.reduce((sum, s) => sum + (s.fieldRunOuts ?? 0), 0)
+  const stumpings = stats.reduce((sum, s) => sum + (s.fieldStumpings ?? 0), 0)
+  return { catches, runOuts, stumpings, total: catches + runOuts + stumpings }
 }
 
 export function computeCareerBowling(stats: PlayerMatchStat[]): CareerBowling {
