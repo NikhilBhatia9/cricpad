@@ -369,6 +369,18 @@ export default function Scoring() {
     )
   }
 
+  // ── Partnership tracker ──
+  // Sum runs + balls since the last wicket ball (or start of innings)
+  const allBalls = innings.overs.flatMap((o) => o.balls)
+  let partnershipRuns = 0
+  let partnershipBalls = 0
+  for (let i = allBalls.length - 1; i >= 0; i--) {
+    const b = allBalls[i]
+    if (b.isWicket) break
+    partnershipRuns += b.runsOffBat + b.extras
+    if (b.isLegal) partnershipBalls++
+  }
+
   return (
     <div className="flex flex-col min-h-screen max-w-lg mx-auto">
       {/* Score header */}
@@ -390,17 +402,26 @@ export default function Scoring() {
               Share
             </button>
             <p className="text-xs text-gray-400">{match.maxOvers} overs</p>
-            {innings.target && (
-              <div className="text-right">
-                <p className="text-sm">Target <span className="font-bold text-yellow-400">{innings.target}</span></p>
-                <p className="text-xs text-gray-400">
-                  Need {innings.target - innings.totalRuns} off {match.maxOvers * 6 - innings.totalLegalBalls} balls
-                </p>
-                <p className="text-xs text-gray-400">
-                  RRR {requiredRunRate(innings.target, innings.totalRuns, match.maxOvers * 6 - innings.totalLegalBalls)}
-                </p>
-              </div>
-            )}
+            {innings.target && (() => {
+              const ballsLeft = match.maxOvers * 6 - innings.totalLegalBalls
+              const rrr = requiredRunRate(innings.target, innings.totalRuns, ballsLeft)
+              const rrrNum = parseFloat(rrr)
+              const rrrColor = isNaN(rrrNum) ? 'text-gray-400'
+                : rrrNum >= 18 ? 'text-red-400 font-bold animate-pulse'
+                : rrrNum >= 13 ? 'text-red-400 font-bold'
+                : rrrNum >= 9  ? 'text-orange-400 font-semibold'
+                : rrrNum >= 7  ? 'text-yellow-400'
+                : 'text-green-400'
+              return (
+                <div className="text-right">
+                  <p className="text-sm">Target <span className="font-bold text-yellow-400">{innings.target}</span></p>
+                  <p className="text-xs text-gray-400">
+                    Need {innings.target - innings.totalRuns} off {ballsLeft} balls
+                  </p>
+                  <p className={`text-sm ${rrrColor}`}>RRR {rrr}</p>
+                </div>
+              )
+            })()}
           </div>
         </div>
 
@@ -423,6 +444,17 @@ export default function Scoring() {
             </div>
           ))}
         </div>
+        {/* Partnership */}
+        {striker && nonStriker && (
+          <div className="flex items-center justify-center gap-1.5 mb-2 py-1">
+            <div className="h-px flex-1 bg-gray-700" />
+            <p className="text-xs text-gray-400 font-medium">
+              Partnership: <span className="text-white font-bold">{partnershipRuns}</span>
+              <span className="text-gray-500"> ({partnershipBalls}b)</span>
+            </p>
+            <div className="h-px flex-1 bg-gray-700" />
+          </div>
+        )}
         {bowler && (
           <div className="bg-gray-800 rounded-xl px-3 py-2 text-sm">
             <p className="text-gray-400 text-xs">Bowling</p>

@@ -196,6 +196,20 @@ export default function Players() {
           const bowl = computeCareerBowling(stats)
           const rec = computeCareerRecord(stats, matchResults)
 
+          // Last 5 match form dots
+          const uniqueMatchIds = [...new Set(
+            [...stats].sort((a, b) => a.matchDate.localeCompare(b.matchDate)).map((s) => s.matchId)
+          )]
+          const last5 = uniqueMatchIds.slice(-5)
+          const formDots = last5.map((matchId) => {
+            const result = matchResults[matchId] ?? ''
+            const playerStat = stats.find((s) => s.matchId === matchId)
+            if (!playerStat || !result) return 'unknown'
+            const r = result.toLowerCase()
+            if (r.includes('tied') || r.includes('tie')) return 'tie'
+            return result.startsWith(playerStat.teamName) ? 'win' : 'loss'
+          })
+
           // Build the highlighted stat badge based on current sort
           let statLabel = ''
           let statValue: string | number = ''
@@ -225,6 +239,20 @@ export default function Players() {
                 <div>
                   <p className="font-bold text-lg">{player.name}</p>
                   <p className="text-xs text-gray-500">{player.totalMatches} match{player.totalMatches !== 1 ? 'es' : ''} &middot; {rec.wins}W {rec.losses}L</p>
+                  {/* Form dots — last 5 results */}
+                  {formDots.length > 0 && (
+                    <div className="flex gap-1 mt-1">
+                      {formDots.map((dot, i) => (
+                        <span
+                          key={i}
+                          className={`inline-block w-2.5 h-2.5 rounded-full ${
+                            dot === 'win' ? 'bg-green-500' : dot === 'loss' ? 'bg-red-500' : dot === 'tie' ? 'bg-yellow-400' : 'bg-gray-600'
+                          }`}
+                          title={dot}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="text-right flex flex-col items-end gap-1">
                   {/* Sort-relevant stat */}
