@@ -1,5 +1,21 @@
 import type { Innings, BatsmanScore, BowlerScore, Over } from '../types/cricket'
 
+export function dismissalText(b: BatsmanScore): string {
+  if (!b.isOut) return 'not out'
+  const by = b.bowledBy ? ` b ${b.bowledBy}` : ''
+  const f = b.fielderName
+  switch (b.wicketType) {
+    case 'Bowled':     return `b ${b.bowledBy ?? '?'}`
+    case 'LBW':        return `lbw b ${b.bowledBy ?? '?'}`
+    case 'Caught':     return f ? `c ${f}${by}` : `caught${by}`
+    case 'Stumped':    return f ? `st ${f}${by}` : `stumped${by}`
+    case 'Run Out':    return f ? `run out (${f})` : 'run out'
+    case 'Hit Wicket': return `hit wkt${by}`
+    case 'Retired':    return 'retired'
+    default:           return b.wicketType ?? 'out'
+  }
+}
+
 export function oversDisplay(legalBalls: number): string {
   const overs = Math.floor(legalBalls / 6)
   const balls = legalBalls % 6

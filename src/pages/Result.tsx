@@ -1,7 +1,7 @@
 ﻿import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMatchStore } from '../store/matchStore'
-import { scoreString, oversDisplay, sortedBatsmen, sortedBowlers, strikeRate, economyRate } from '../utils/cricket'
+import { scoreString, oversDisplay, sortedBatsmen, sortedBowlers, strikeRate, economyRate, dismissalText } from '../utils/cricket'
 import { computeMvp, mvpNarrative } from '../utils/mvp'
 import { saveMatch } from '../db/operations'
 import ScorecardImage from '../components/ScorecardImage'
@@ -125,7 +125,7 @@ export default function Result() {
                   <tr key={b.playerId} className="border-b border-gray-700/40">
                     <td className="py-1.5">
                       <p className="font-medium">{b.name}</p>
-                      <p className="text-xs text-gray-500">{b.isOut ? b.wicketType : 'not out'}</p>
+                      <p className="text-xs text-gray-500">{dismissalText(b)}</p>
                     </td>
                     <td className="text-right font-bold">{b.runs}</td>
                     <td className="text-right text-gray-400">{b.balls}</td>

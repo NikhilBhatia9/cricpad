@@ -1,6 +1,6 @@
 import { forwardRef } from 'react'
 import type { Match } from '../types/cricket'
-import { oversDisplay } from '../utils/cricket'
+import { oversDisplay, dismissalText } from '../utils/cricket'
 import { computeMvp } from '../utils/mvp'
 
 interface Props {
@@ -92,7 +92,7 @@ const ScorecardImage = forwardRef<HTMLDivElement, Props>(({ match, completedAt }
                   <span style={s.bName(b.runs >= 25)}>
                     {b.name}{!b.isOut ? '*' : ''}
                     <span style={{ color: '#475569', fontWeight: 400 }}>
-                      {b.isOut ? ` \u00b7 ${b.wicketType ?? 'out'}` : ' \u00b7 not out'}
+                      {' \u00b7 '}{dismissalText(b)}
                     </span>
                   </span>
                   <span style={s.bStats}>

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { fetchAllMatches, fetchMatch } from '../db/operations'
 import type { MatchRecord } from '../db/types'
 import type { Match } from '../types/cricket'
-import { scoreString, oversDisplay } from '../utils/cricket'
+import { scoreString, oversDisplay, dismissalText } from '../utils/cricket'
 import BackButton from '../components/BackButton'
 import { computeMvp, mvpNarrative } from '../utils/mvp'
 import ScorecardImage from '../components/ScorecardImage'
@@ -192,7 +192,7 @@ function MatchDetail({ matchId, onBack }: { matchId: string; onBack: () => void 
                   <tr key={b.playerId} className="border-b border-gray-700/40">
                     <td className="py-1.5">
                       <button className="font-medium text-left hover:text-green-400" onClick={() => navigate(`/players/${encodeURIComponent(b.name)}`)}>{b.name}</button>
-                      <p className="text-xs text-gray-500">{b.isOut ? b.wicketType : 'not out'}</p>
+                      <p className="text-xs text-gray-500">{dismissalText(b)}</p>
                     </td>
                     <td className="text-right font-bold">{b.runs}</td>
                     <td className="text-right text-gray-400">{b.balls}</td>
