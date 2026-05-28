@@ -166,7 +166,13 @@ export const useMatchStore = create<MatchStore>()(
           // Snapshot for undo (keep last 6)
           const newUndoHistory = [...s.undoHistory, innings].slice(-6)
 
-          const ball: BallEvent = { ...ballData, id: uuidv4() }
+          // Free hit: on a free hit delivery, only Run Out is a valid dismissal
+          const isFreeHit = innings.isFreeHit ?? false
+          const effectiveBallData = (isFreeHit && ballData.isWicket && ballData.wicketType !== 'Run Out')
+            ? { ...ballData, isWicket: false, wicketType: undefined, fielderId: undefined, fielderName: undefined }
+            : ballData
+
+          const ball: BallEvent = { ...effectiveBallData, id: uuidv4() }
           const batsmen = { ...innings.batsmen }
           const bowlers = { ...innings.bowlers }
           const extras = { ...innings.extras }
@@ -290,6 +296,8 @@ export const useMatchStore = create<MatchStore>()(
             totalLegalBalls: newLegalBalls,
             isComplete,
             resultNote,
+            // Next ball is a free hit only if this ball was a no-ball
+            isFreeHit: ball.extraType === 'noball',
           }
 
           const newInnings = [...s.match.innings] as [Innings | null, Innings | null]

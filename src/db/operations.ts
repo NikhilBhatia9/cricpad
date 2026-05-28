@@ -351,7 +351,7 @@ export function computeCareerBowling(stats: PlayerMatchStat[]): CareerBowling {
   }
 }
 
-function calcRowPoints(r: Record<string, unknown>): number {
+function calcRowPoints(r: Record<string, unknown>, didWin: boolean): number {
   let pts = 0
   const batDidBat = !!r.bat_did_bat
   const bowlDidBowl = !!r.bowl_did_bowl
@@ -392,26 +392,40 @@ function calcRowPoints(r: Record<string, unknown>): number {
     pts += bowlMaidens * 10
   }
 
+  if (didWin) pts += 25
+
   return Math.max(0, pts)
 }
 
 export async function fetchLeaderboard(since?: string): Promise<LeaderboardEntry[]> {
   let query = supabase
     .from('player_stats')
-    .select('player_name, is_mvp, bat_runs, bat_balls, bat_fours, bat_sixes, bat_is_out, bat_did_bat, bowl_wickets, bowl_legal_balls, bowl_runs_conceded, bowl_maidens, bowl_did_bowl, match_id, match_date')
+    .select('player_name, team_name, is_mvp, bat_runs, bat_balls, bat_fours, bat_sixes, bat_is_out, bat_did_bat, bowl_wickets, bowl_legal_balls, bowl_runs_conceded, bowl_maidens, bowl_did_bowl, match_id, match_date')
   if (since) query = query.gte('match_date', since)
   const { data, error } = await query
   if (error) throw error
+
+  // Fetch match results to determine winners
+  const matchIds = [...new Set((data ?? []).map((r) => r.match_id as string))]
+  const resultMap: Record<string, string> = {}
+  if (matchIds.length > 0) {
+    const { data: matchRows } = await supabase.from('matches').select('id, result').in('id', matchIds)
+    for (const m of (matchRows ?? [])) resultMap[m.id as string] = (m.result as string) ?? ''
+  }
 
   const map: Record<string, { mvpMatchIds: Set<string>; totalMvpPoints: number; totalRuns: number; totalWickets: number; matchIds: Set<string> }> = {}
   for (const r of (data ?? [])) {
     const name = r.player_name as string
     if (!map[name]) map[name] = { mvpMatchIds: new Set(), totalMvpPoints: 0, totalRuns: 0, totalWickets: 0, matchIds: new Set() }
-    map[name].matchIds.add(r.match_id as string)
-    if (r.is_mvp) map[name].mvpMatchIds.add(r.match_id as string)
+    const matchId = r.match_id as string
+    map[name].matchIds.add(matchId)
+    if (r.is_mvp) map[name].mvpMatchIds.add(matchId)
     if (r.bat_did_bat) map[name].totalRuns += (r.bat_runs as number) || 0
     map[name].totalWickets += (r.bowl_wickets as number) || 0
-    map[name].totalMvpPoints += calcRowPoints(r as Record<string, unknown>)
+    const matchResult = resultMap[matchId] ?? ''
+    const teamName = (r.team_name as string) ?? ''
+    const didWin = !!(matchResult && !matchResult.toLowerCase().includes('tied') && matchResult.startsWith(teamName))
+    map[name].totalMvpPoints += calcRowPoints(r as Record<string, unknown>, didWin)
   }
 
   return Object.entries(map)

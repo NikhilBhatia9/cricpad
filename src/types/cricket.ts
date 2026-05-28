@@ -100,6 +100,8 @@ export interface Innings {
   isComplete: boolean
   resultNote?: string
   fallOfWickets?: FallOfWicket[]
+  /** True when the next delivery is a free hit (ball after a no-ball) */
+  isFreeHit?: boolean
 }
 
 export interface Team {

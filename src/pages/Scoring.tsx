@@ -477,13 +477,16 @@ export default function Scoring() {
 
   // ── 6. Wicket type modal ──
   if (showWicketModal) {
-    // B-02: on a no-ball only Run Out is a valid dismissal
-    const validWicketTypes = pendingExtra === 'noball' ? (['Run Out'] as WicketType[]) : WICKET_TYPES
+    // On a no-ball OR a free hit delivery, only Run Out is a valid dismissal
+    const onFreeHit = innings.isFreeHit ?? false
+    const validWicketTypes = (pendingExtra === 'noball' || onFreeHit) ? (['Run Out'] as WicketType[]) : WICKET_TYPES
     return (
       <div className="flex flex-col min-h-screen px-4 py-6">
         <h2 className="text-xl font-bold mb-2 text-center text-red-400">Wicket! How out?</h2>
-        {pendingExtra === 'noball' && (
-          <p className="text-yellow-400 text-xs text-center mb-4">No Ball — only Run Out is valid</p>
+        {(pendingExtra === 'noball' || onFreeHit) && (
+          <p className="text-yellow-400 text-xs text-center mb-4">
+            {onFreeHit ? '🆓 Free Hit — only Run Out is valid' : 'No Ball — only Run Out is valid'}
+          </p>
         )}
         <div className="grid grid-cols-2 gap-3 mb-4">
           {validWicketTypes.map((t) => (
@@ -588,6 +591,12 @@ export default function Scoring() {
 
       {/* Current players */}
       <div className="px-4 py-3 border-b border-gray-700">
+        {/* Free Hit indicator */}
+        {innings.isFreeHit && (
+          <div className="bg-green-500/20 border border-green-500/50 text-green-300 font-bold text-sm px-3 py-2 rounded-xl mb-2 text-center tracking-wide animate-pulse">
+            🆓 FREE HIT — Only Run Out applies
+          </div>
+        )}
         <div className="flex gap-2 text-sm mb-2">
           {[striker, nonStriker].map((b, i) => b && (
             <div key={i} className={`flex-1 bg-gray-800 rounded-xl px-3 py-2 ${i === 0 ? 'border border-green-600' : ''}`}>

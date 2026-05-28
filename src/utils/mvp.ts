@@ -4,6 +4,7 @@ export interface PlayerMvpScore {
   name: string
   teamName: string
   totalPoints: number
+  didWin: boolean
   // Batting
   batRuns: number
   batBalls: number
@@ -34,6 +35,9 @@ export interface PlayerMvpScore {
  *   +15 pts eco < 6 | +8 pts eco < 8 | -10 pts eco > 14  (min 6 balls)
  *   +10 pts per maiden
  *   +10 pts for 2-wicket haul, +20 pts for 3+
+ *
+ * TEAM
+ *   +25 pts for being on the winning team
  */
 function calcPoints(p: PlayerMvpScore): number {
   let pts = 0
@@ -77,12 +81,13 @@ function calcPoints(p: PlayerMvpScore): number {
     pts += p.bowlMaidens * 10
   }
 
-  // ── Fielding proxy: weight by involvement ─────────────────────────────
-  // Can't track catches/run-outs directly yet, so small bonus for
-  // contributing in both disciplines (all-rounder bonus)
+  // ── Fielding proxy ────────────────────────────────────────────────────
   if (p.batDidBat && p.bowlDidBowl && p.batRuns > 0 && p.bowlWickets > 0) {
     pts += 10 // all-rounder bonus
   }
+
+  // ── Win bonus ─────────────────────────────────────────────────────────
+  if (p.didWin) pts += 25
 
   return Math.max(0, pts)
 }
@@ -92,6 +97,11 @@ export function computeMvp(match: Match): PlayerMvpScore | null {
 
   const totalBalls = match.innings.reduce((sum, inn) => sum + (inn?.totalLegalBalls ?? 0), 0)
   void totalBalls // used implicitly for future fielding metrics
+
+  // Determine winning team name (if any) from the result string
+  const result = match.result ?? ''
+  const isTied = result.toLowerCase().includes('tied') || result.toLowerCase().includes('tie')
+  const winnerName = isTied ? null : match.teams.find((t) => result.startsWith(t.name))?.name ?? null
 
   for (const innings of match.innings) {
     if (!innings) continue
@@ -103,7 +113,7 @@ export function computeMvp(match: Match): PlayerMvpScore | null {
     for (const b of Object.values(innings.batsmen)) {
       if (!playerMap[b.name]) {
         playerMap[b.name] = {
-          name: b.name, teamName: battingTeam.name, totalPoints: 0,
+          name: b.name, teamName: battingTeam.name, totalPoints: 0, didWin: false,
           batRuns: 0, batBalls: 0, batFours: 0, batSixes: 0, batIsOut: false, batDidBat: false,
           bowlWickets: 0, bowlLegalBalls: 0, bowlRunsConceded: 0, bowlMaidens: 0, bowlDidBowl: false,
         }
@@ -132,7 +142,7 @@ export function computeMvp(match: Match): PlayerMvpScore | null {
     for (const b of Object.values(innings.bowlers)) {
       if (!playerMap[b.name]) {
         playerMap[b.name] = {
-          name: b.name, teamName: fieldingTeam.name, totalPoints: 0,
+          name: b.name, teamName: fieldingTeam.name, totalPoints: 0, didWin: false,
           batRuns: 0, batBalls: 0, batFours: 0, batSixes: 0, batIsOut: false, batDidBat: false,
           bowlWickets: 0, bowlLegalBalls: 0, bowlRunsConceded: 0, bowlMaidens: 0, bowlDidBowl: false,
         }
@@ -142,6 +152,13 @@ export function computeMvp(match: Match): PlayerMvpScore | null {
       playerMap[b.name].bowlRunsConceded = b.runsConceded
       playerMap[b.name].bowlMaidens = maidensByBowler[b.playerId] ?? 0
       playerMap[b.name].bowlDidBowl = true
+    }
+  }
+
+  // Set win bonus for players on the winning team
+  if (winnerName) {
+    for (const p of Object.values(playerMap)) {
+      p.didWin = p.teamName === winnerName
     }
   }
 
