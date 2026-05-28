@@ -41,6 +41,8 @@ export default function Players() {
   const [editName, setEditName] = useState('')
   const [editError, setEditError] = useState('')
   const [editSaving, setEditSaving] = useState(false)
+  const [compareMode, setCompareMode] = useState(false)
+  const [compareA, setCompareA] = useState<string | null>(null)
 
   async function loadPlayers() {
     try {
@@ -160,17 +162,48 @@ export default function Players() {
         <BackButton onClick={() => navigate('/')} />
         <h1 className="text-xl font-bold">Players</h1>
         <div className="ml-auto flex items-center gap-2">
-          <button
-            className="bg-green-600 hover:bg-green-500 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5"
-            onClick={() => { setShowAdd(!showAdd); setAddError('') }}
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Add
-          </button>
+          {!compareMode && (
+            <>
+              {players.length >= 2 && (
+                <button
+                  className="bg-blue-700 hover:bg-blue-600 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5"
+                  onClick={() => { setCompareMode(true); setCompareA(null) }}
+                >
+                  ⚖️ Compare
+                </button>
+              )}
+              <button
+                className="bg-green-600 hover:bg-green-500 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5"
+                onClick={() => { setShowAdd(!showAdd); setAddError('') }}
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                Add
+              </button>
+            </>
+          )}
+          {compareMode && (
+            <button
+              className="bg-gray-600 hover:bg-gray-500 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors"
+              onClick={() => { setCompareMode(false); setCompareA(null) }}
+            >
+              ✕ Cancel
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Compare mode banner */}
+      {compareMode && (
+        <div className="card mb-4 bg-blue-900/40 border border-blue-700/50">
+          <p className="text-sm font-semibold text-blue-300">
+            {compareA === null
+              ? '👆 Tap a player to compare'
+              : `✅ ${compareA} selected — tap a second player`}
+          </p>
+        </div>
+      )}
 
       {showAdd && (
         <div className="card mb-4">
@@ -296,16 +329,35 @@ export default function Players() {
                   {editError && <p className="text-red-400 text-xs">{editError}</p>}
                 </div>
               ) : (
-                /* ── Normal player row (tappable to navigate) ── */
+                /* ── Normal player row (tappable to navigate or compare-select) ── */
                 <button
-                  className="w-full text-left hover:bg-gray-700/40 transition-colors active:scale-[0.99] rounded-xl"
-                  onClick={() => navigate(`/players/${encodeURIComponent(player.name)}`)}
+                  className={`w-full text-left hover:bg-gray-700/40 transition-colors active:scale-[0.99] rounded-xl ${
+                    compareMode && compareA === player.name ? 'ring-2 ring-blue-400' : ''
+                  } ${compareMode && compareA !== null && compareA === player.name ? 'opacity-70' : ''}`}
+                  onClick={() => {
+                    if (compareMode) {
+                      if (compareA === null) {
+                        setCompareA(player.name)
+                      } else if (compareA !== player.name) {
+                        navigate(`/compare/${encodeURIComponent(compareA)}/${encodeURIComponent(player.name)}`)
+                        setCompareMode(false)
+                        setCompareA(null)
+                      }
+                    } else {
+                      navigate(`/players/${encodeURIComponent(player.name)}`)
+                    }
+                  }}
                 >
                   <div className="flex justify-between items-center">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="font-bold text-lg truncate">{player.name}</p>
-                        <button
+                        {compareMode ? (
+                          compareA === player.name
+                            ? <span className="text-blue-400 text-sm">✓ Selected</span>
+                            : compareA !== null ? <span className="text-xs text-gray-500">Tap to compare</span> : null
+                        ) : (
+                          <button
                             className="text-gray-500 hover:text-white transition-colors flex-shrink-0 p-1 rounded"
                             onClick={(e) => startEdit(player.name, e)}
                             title="Rename player"
@@ -314,6 +366,7 @@ export default function Players() {
                               <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828a2 2 0 01-1.414.586H8v-2.414a2 2 0 01.586-1.414z" />
                             </svg>
                           </button>
+                        )}
                       </div>
                       <p className="text-xs text-gray-500">{player.totalMatches} match{player.totalMatches !== 1 ? 'es' : ''} &middot; {rec.wins}W {rec.losses}L</p>
                       {/* Form dots — last 5 results */}

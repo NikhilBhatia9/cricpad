@@ -25,6 +25,7 @@ interface MatchStore {
   // Navigation
   startSecondInnings: () => void
   completeMatch: () => void
+  startSuperOver: () => void
   resetMatch: () => void
 
   // Sync
@@ -232,6 +233,15 @@ export const useMatchStore = create<MatchStore>()(
           const newRuns = innings.totalRuns + ball.runsOffBat + ball.extras
           const newWickets = innings.totalWickets + (ball.isWicket ? 1 : 0)
 
+          // Fall of wickets
+          const fallOfWickets = [...(innings.fallOfWickets ?? [])]
+          if (ball.isWicket) {
+            const batsmanName = ball.runOutNonStriker
+              ? (innings.nonStrikerId ? innings.batsmen[innings.nonStrikerId]?.name ?? '' : '')
+              : (innings.batsmen[ball.strikerId]?.name ?? '')
+            fallOfWickets.push({ wicketNum: newWickets, runs: newRuns, legalBalls: newLegalBalls, batsmanName })
+          }
+
           // Swap striker on odd runs (off bat only) or end of over.
           // Guard: only swap when there IS a non-striker (last-batsman mode skips swaps).
           // No-balls are not legal but batsmen still cross ends when they run.
@@ -271,6 +281,7 @@ export const useMatchStore = create<MatchStore>()(
             bowlers,
             fielders,
             extras,
+            fallOfWickets,
             // For non-striker run out: striker stays on, non-striker slot empties for replacement
             strikerId: (ball.isWicket && !ball.runOutNonStriker) ? null : strikerId,
             nonStrikerId: (ball.isWicket && ball.runOutNonStriker) ? null : nonStrikerId,
@@ -350,6 +361,26 @@ export const useMatchStore = create<MatchStore>()(
         set((s) => {
           if (!s.match) return s
           return { match: { ...s.match, status: 'complete' } }
+        })
+      },
+
+      startSuperOver: () => {
+        set((s) => {
+          if (!s.match) return s
+          return {
+            match: {
+              ...s.match,
+              completedInnings: s.match.innings,
+              completedResult: s.match.result,
+              innings: [null, null],
+              maxOvers: 1,
+              isSuperOver: true,
+              status: 'toss',
+              result: undefined,
+              currentInningsIndex: 0,
+            },
+            undoHistory: [],
+          }
         })
       },
 

@@ -117,6 +117,21 @@ export async function fetchMatchesByIds(ids: string[]): Promise<MatchRecord[]> {
 }
 
 // Lightweight: fetch only id+result for a set of match IDs (no limit)
+// Fetch full match snapshots for comparison / ball-level analysis
+export async function fetchMatchSnapshotsByIds(ids: string[]): Promise<Record<string, Match>> {
+  if (ids.length === 0) return {}
+  const { data, error } = await supabase
+    .from('matches')
+    .select('id, snapshot')
+    .in('id', ids)
+  if (error) throw error
+  const map: Record<string, Match> = {}
+  for (const r of (data ?? [])) {
+    try { map[r.id as string] = JSON.parse(r.snapshot as string) as Match } catch { /* skip malformed */ }
+  }
+  return map
+}
+
 export async function fetchMatchResultsMap(ids: string[]): Promise<Record<string, string>> {
   if (ids.length === 0) return {}
   const { data, error } = await supabase

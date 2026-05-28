@@ -515,6 +515,11 @@ export default function Scoring() {
     <div className="flex flex-col min-h-screen max-w-lg mx-auto">
       {/* Score header */}
       <div className="bg-gray-800 px-4 py-4">
+        {match.isSuperOver && (
+          <div className="bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 text-xs font-bold px-3 py-1.5 rounded-lg mb-2 text-center tracking-wide">
+            ⚡ SUPER OVER
+          </div>
+        )}
         <div className="flex justify-between items-start mb-1">
           <div>
             <p className="text-xs text-gray-400">{battingTeam.name}</p>
@@ -559,13 +564,26 @@ export default function Scoring() {
           </div>
         </div>
 
-        {/* Current over balls */}
-        <div className="flex gap-1.5 mt-2 flex-wrap">
+        {/* Over progress bar — 6 legal-ball slots */}
+        <div className="flex items-center gap-1 mt-2 flex-wrap">
           {overBalls.map((b, i) => (
-            <div key={i} className={`ball-dot ${ballColorClass(b)}`}>{b}</div>
+            <div key={`b${i}`} className={`ball-dot ${ballColorClass(b)}`}>{b}</div>
           ))}
-          {overBalls.length === 0 && <p className="text-xs text-gray-500">Over {overNum} {'\u2014'} no balls yet</p>}
+          {Array.from({ length: Math.max(0, 6 - (innings.totalLegalBalls % 6 === 0 && innings.totalLegalBalls > 0 ? 6 : innings.totalLegalBalls % 6)) }).map((_, i) => (
+            <div key={`e${i}`} className="ball-dot bg-gray-700/40 border border-gray-600 border-dashed text-gray-600">·</div>
+          ))}
+          {overBalls.length === 0 && (
+            <p className="text-xs text-gray-500 ml-1">Over {overNum} — new over</p>
+          )}
         </div>
+        {/* Projected score — 1st innings only */}
+        {idx === 0 && innings.totalLegalBalls > 0 && (
+          <p className="text-xs text-gray-500 mt-1">
+            Projected: <span className="text-gray-300 font-semibold">
+              {Math.round((innings.totalRuns / innings.totalLegalBalls) * match.maxOvers * 6)}
+            </span>
+          </p>
+        )}
       </div>
 
       {/* Current players */}

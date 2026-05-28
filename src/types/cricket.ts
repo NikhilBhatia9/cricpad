@@ -76,6 +76,13 @@ export interface InningsExtras {
   legByes: number
 }
 
+export interface FallOfWicket {
+  wicketNum: number
+  runs: number
+  legalBalls: number   // total legal balls in innings when wicket fell
+  batsmanName: string
+}
+
 export interface Innings {
   battingTeamIndex: 0 | 1
   overs: Over[]
@@ -92,6 +99,7 @@ export interface Innings {
   target?: number
   isComplete: boolean
   resultNote?: string
+  fallOfWickets?: FallOfWicket[]
 }
 
 export interface Team {
@@ -110,4 +118,8 @@ export interface Match {
   result?: string
   createdAt: string
   spectatorCode?: string
+  // Super Over
+  isSuperOver?: boolean
+  completedInnings?: [Innings | null, Innings | null]
+  completedResult?: string
 }

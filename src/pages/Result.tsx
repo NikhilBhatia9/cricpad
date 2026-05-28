@@ -9,7 +9,7 @@ import { captureAndShare } from '../utils/shareScorecard'
 
 export default function Result() {
   const navigate = useNavigate()
-  const { match, resetMatch } = useMatchStore()
+  const { match, resetMatch, startSuperOver } = useMatchStore()
   const scorecardRef = useRef<HTMLDivElement>(null)
   const [sharing, setSharing] = useState(false)
 
@@ -22,6 +22,12 @@ export default function Result() {
   const i1 = match.innings[0]
   const i2 = match.innings[1]
   const mvp = computeMvp(match)
+  const isTied = match.result?.toLowerCase().includes('tied') || match.result?.toLowerCase().includes('tie')
+
+  function handleSuperOver() {
+    startSuperOver()
+    navigate('/toss')
+  }
 
   async function handleShare() {
     if (!scorecardRef.current) return
@@ -40,8 +46,11 @@ export default function Result() {
     <div className="px-4 py-6 max-w-lg mx-auto pb-10">
       {/* Result banner */}
       <div className="text-center mb-6">
-        <div className="text-5xl mb-3">&#x1F3C6;</div>
-        <h1 className="text-2xl font-bold mb-2">Match Over</h1>
+        <div className="text-5xl mb-3">{match.isSuperOver ? '⚡' : '🏆'}</div>
+        <h1 className="text-2xl font-bold mb-2">{match.isSuperOver ? 'Super Over Result' : 'Match Over'}</h1>
+        {match.isSuperOver && match.completedResult && (
+          <p className="text-sm text-gray-400 mb-2">Main match: <span className="text-yellow-400 font-semibold">{match.completedResult}</span></p>
+        )}
         {match.result && (
           <div className="bg-green-800 rounded-2xl px-4 py-3">
             <p className="text-xl font-bold text-green-200">{match.result}</p>
@@ -139,6 +148,20 @@ export default function Result() {
             <p className="text-xs text-gray-500 mb-3">
               Extras: {inn.extras.wides}w &middot; {inn.extras.noBalls}nb &middot; {inn.extras.byes}b &middot; {inn.extras.legByes}lb
             </p>
+            {inn.fallOfWickets && inn.fallOfWickets.length > 0 && (
+              <div className="mb-3">
+                <p className="text-xs text-gray-500 font-semibold mb-1">Fall of Wickets</p>
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  {inn.fallOfWickets.map((fow, i) => (
+                    <span key={i}>
+                      {i > 0 && <span className="text-gray-600"> &middot; </span>}
+                      <span className="text-white font-semibold">{fow.runs}-{fow.wicketNum}</span>
+                      <span className="text-gray-500"> ({fow.batsmanName}, {oversDisplay(fow.legalBalls)} ov)</span>
+                    </span>
+                  ))}
+                </p>
+              </div>
+            )}
             <h3 className="text-sm text-gray-400 font-semibold mb-2">Bowling</h3>
             <table className="w-full text-sm">
               <thead>
@@ -169,6 +192,14 @@ export default function Result() {
       })}
 
       <div className="flex gap-3 mt-2">
+        {isTied && !match.isSuperOver && (
+          <button
+            className="flex-1 bg-yellow-600 hover:bg-yellow-500 active:bg-yellow-700 text-white font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-colors"
+            onClick={handleSuperOver}
+          >
+            ⚡ Super Over
+          </button>
+        )}
         <button
           className="flex-1 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-colors"
           onClick={handleShare}
