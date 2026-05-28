@@ -213,7 +213,7 @@ export default function Result() {
           {sharing ? 'Generating...' : 'Share Scorecard'}
         </button>
         <button className="flex-1 btn-primary" onClick={() => { resetMatch(); navigate('/') }}>
-          &#x1F3CF; New Match
+          🏠 Homepage
         </button>
       </div>
 
