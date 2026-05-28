@@ -6,6 +6,153 @@ import { computeMvp, mvpNarrative } from '../utils/mvp'
 import { saveMatch } from '../db/operations'
 import ScorecardImage from '../components/ScorecardImage'
 import { captureAndShare } from '../utils/shareScorecard'
+import type { Innings } from '../types/cricket'
+
+interface OverBarPoint { over: number; runs: number; rr: number }
+
+function computeOverData(inn: Innings): OverBarPoint[] {
+  return inn.overs.map((o, i) => {
+    const runs = o.balls.reduce((s, b) => s + b.runsOffBat + b.extras, 0)
+    const legal = o.balls.filter((b) => b.isLegal).length
+    const rr = legal > 0 ? (runs / legal) * 6 : 0
+    return { over: i + 1, runs, rr: Math.round(rr * 10) / 10 }
+  })
+}
+
+function RunRateGraph({ inn1, inn2, maxOvers, team1, team2 }: {
+  inn1: Innings | null
+  inn2: Innings | null
+  maxOvers: number
+  team1: string
+  team2: string
+}) {
+  const d1 = inn1 ? computeOverData(inn1) : []
+  const d2 = inn2 ? computeOverData(inn2) : []
+  if (d1.length === 0 && d2.length === 0) return null
+
+  const numOvers = Math.max(d1.length, d2.length, 1)
+  const allRR = [...d1, ...d2].map((p) => p.rr)
+  const maxRR = Math.max(...allRR, 12)
+  const w = 320
+  const h = 140
+  const padL = 28
+  const padR = 8
+  const padT = 10
+  const padB = 24
+  const chartW = w - padL - padR
+  const chartH = h - padT - padB
+  const barW = Math.max(2, Math.floor(chartW / numOvers) - 2)
+
+  function barX(i: number) {
+    return padL + Math.floor((i / numOvers) * chartW) + Math.floor((chartW / numOvers - barW) / 2)
+  }
+  function barH(rr: number) { return Math.round((rr / maxRR) * chartH) }
+
+  const yLines = [0, 6, 9, 12].filter((v) => v <= maxRR + 2)
+
+  return (
+    <div className="card mb-4">
+      <p className="text-sm font-semibold text-gray-300 mb-3">📈 Over-by-over Run Rate</p>
+      <div className="flex gap-4 text-xs mb-3">
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded-sm bg-green-500/70" />
+          <span className="text-gray-400">{team1}</span>
+        </div>
+        {d2.length > 0 && (
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-sm bg-blue-500/70" />
+            <span className="text-gray-400">{team2}</span>
+          </div>
+        )}
+      </div>
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ maxHeight: 160 }}>
+        {/* Y-axis grid lines */}
+        {yLines.map((v) => {
+          const y = padT + chartH - Math.round((v / maxRR) * chartH)
+          return (
+            <g key={v}>
+              <line x1={padL} x2={w - padR} y1={y} y2={y} stroke="#374151" strokeWidth={0.5} strokeDasharray={v === 0 ? undefined : '3 3'} />
+              <text x={padL - 3} y={y + 3} textAnchor="end" fontSize={8} fill="#6b7280">{v}</text>
+            </g>
+          )
+        })}
+        {/* Bars — innings 1 */}
+        {d1.map((p, i) => {
+          const bh = barH(p.rr)
+          const x = barX(i)
+          const y = padT + chartH - bh
+          return (
+            <g key={`i1-${i}`}>
+              <rect x={x} y={y} width={barW} height={bh} rx={2} fill="#22c55e" fillOpacity={0.7} />
+            </g>
+          )
+        })}
+        {/* Bars — innings 2 (offset slightly) */}
+        {d2.map((p, i) => {
+          const bh = barH(p.rr)
+          const x = barX(i) + Math.floor(barW * 0.52)
+          const y = padT + chartH - bh
+          return (
+            <g key={`i2-${i}`}>
+              <rect x={x} y={y} width={Math.max(1, barW - Math.floor(barW * 0.52))} height={bh} rx={2} fill="#3b82f6" fillOpacity={0.7} />
+            </g>
+          )
+        })}
+        {/* X-axis over labels */}
+        {Array.from({ length: numOvers }, (_, i) => i + 1).filter((n) => n === 1 || n % Math.ceil(numOvers / 8) === 0 || n === numOvers).map((n) => {
+          const x = barX(n - 1) + Math.floor(barW / 2)
+          return (
+            <text key={n} x={x} y={h - 6} textAnchor="middle" fontSize={8} fill="#6b7280">{n}</text>
+          )
+        })}
+        {/* X-axis label */}
+        <text x={w / 2} y={h - 1} textAnchor="middle" fontSize={7} fill="#4b5563">Over</text>
+        {/* Runs per over tooltip row */}
+        {d1.map((p, i) => {
+          const x = barX(i) + Math.floor(barW / 2)
+          return (
+            <text key={`rr1-${i}`} x={x} y={padT + chartH - barH(p.rr) - 2} textAnchor="middle" fontSize={7} fill="#86efac" opacity={p.runs >= 10 ? 1 : 0}>
+              {p.runs}
+            </text>
+          )
+        })}
+        {d2.map((p, i) => {
+          const x = barX(i) + Math.floor(barW * 0.52) + Math.floor((barW - Math.floor(barW * 0.52)) / 2)
+          return (
+            <text key={`rr2-${i}`} x={x} y={padT + chartH - barH(p.rr) - 2} textAnchor="middle" fontSize={7} fill="#93c5fd" opacity={p.runs >= 10 ? 1 : 0}>
+              {p.runs}
+            </text>
+          )
+        })}
+      </svg>
+      {/* Over run summary row */}
+      <div className="mt-2 overflow-x-auto">
+        <div className="flex gap-1 min-w-max">
+          {Array.from({ length: Math.max(d1.length, d2.length) }, (_, i) => (
+            <div key={i} className="flex flex-col items-center min-w-[28px]">
+              <p className="text-xs text-gray-500">{i + 1}</p>
+              {d1[i] !== undefined && <p className="text-xs text-green-400 font-semibold">{d1[i].runs}</p>}
+              {d2[i] !== undefined && <p className="text-xs text-blue-400 font-semibold">{d2[i].runs}</p>}
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* Totals row */}
+      <div className="flex gap-4 mt-2 pt-2 border-t border-gray-700">
+        {d1.length > 0 && (
+          <p className="text-xs text-gray-400">
+            <span className="text-green-400 font-bold">{team1}</span>: avg RR {(d1.reduce((s, p) => s + p.rr, 0) / d1.length).toFixed(1)} · max {Math.max(...d1.map((p) => p.rr)).toFixed(1)}/ov
+          </p>
+        )}
+        {d2.length > 0 && (
+          <p className="text-xs text-gray-400">
+            <span className="text-blue-400 font-bold">{team2}</span>: avg RR {(d2.reduce((s, p) => s + p.rr, 0) / d2.length).toFixed(1)} · max {Math.max(...d2.map((p) => p.rr)).toFixed(1)}/ov
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
 
 export default function Result() {
   const navigate = useNavigate()
@@ -107,6 +254,15 @@ export default function Result() {
           </div>
         </div>
       )}
+
+      {/* Run Rate Graph */}
+      <RunRateGraph
+        inn1={i1}
+        inn2={i2}
+        maxOvers={match.maxOvers}
+        team1={match.teams[i1?.battingTeamIndex ?? 0].name}
+        team2={match.teams[i2?.battingTeamIndex ?? 1].name}
+      />
 
       {/* Scorecards */}
       {[i1, i2].map((inn, innIdx) => {

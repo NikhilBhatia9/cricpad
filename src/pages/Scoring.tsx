@@ -5,6 +5,7 @@ import { oversDisplay, runRate, requiredRunRate, currentOverBalls, ballColorClas
 import type { WicketType, ExtraType, Over, Innings } from '../types/cricket'
 import PlayerSelector from '../components/PlayerSelector'
 import ShareMatchModal from '../components/ShareMatchModal'
+import { hapticLight, hapticMedium, hapticBoundary, hapticWicket } from '../utils/haptic'
 
 const WICKET_TYPES: WicketType[] = ['Bowled', 'Caught', 'LBW', 'Run Out', 'Stumped', 'Hit Wicket', 'Retired']
 const FIELDER_WICKETS: WicketType[] = ['Caught', 'Run Out', 'Stumped']
@@ -165,6 +166,20 @@ export default function Scoring() {
     return () => clearTimeout(t)
   }, [milestone])
 
+  const scoreHeaderRef = useRef<HTMLDivElement>(null)
+  const [stickyVisible, setStickyVisible] = useState(false)
+
+  useEffect(() => {
+    const el = scoreHeaderRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => setStickyVisible(!entry.isIntersecting),
+      { threshold: 0 }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [match])
+
   // B-05: Guard browser back button during live match
   useEffect(() => {
     window.history.pushState(null, '', window.location.href)
@@ -240,6 +255,9 @@ export default function Scoring() {
 
   function recordRuns(runs: number) {
     if (!innings!.strikerId || !innings!.bowlerId) return
+    if (runs === 4 || runs === 6) hapticBoundary()
+    else if (runs > 0) hapticMedium()
+    else hapticLight()
     const extra = pendingExtra
     const isLegal = extra !== 'wide' && extra !== 'noball'
     recordBall({
@@ -272,6 +290,7 @@ export default function Scoring() {
 
   function commitWicket(type: WicketType, fielderId: string | undefined, fielderName: string | undefined) {
     if (!innings!.strikerId || !innings!.bowlerId) return
+    hapticWicket()
     // B-02: if a no-ball was pending, carry the 1-run penalty and mark not legal
     const isNoBall = pendingExtra === 'noball'
     // Runs completed before run-out (e.g. batter ran 2, got out on 3rd)
@@ -545,8 +564,31 @@ export default function Scoring() {
 
   return (
     <div className="flex flex-col min-h-screen max-w-lg mx-auto">
+      {/* Sticky mini score bar — appears when main header scrolls off screen */}
+      {stickyVisible && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-gray-900/95 backdrop-blur border-b border-gray-700 px-4 py-2 flex items-center justify-between max-w-lg mx-auto">
+          <div>
+            <p className="text-xs text-gray-400">{battingTeam.name}</p>
+            <p className="text-lg font-bold leading-tight">
+              {innings.totalRuns}<span className="text-sm text-gray-400">/{innings.totalWickets}</span>
+              <span className="text-xs text-gray-400 font-normal ml-1">({oversDisplay(innings.totalLegalBalls)} ov)</span>
+            </p>
+          </div>
+          {innings.target ? (
+            <div className="text-right">
+              <p className="text-xs text-yellow-400 font-bold">Target {innings.target}</p>
+              <p className="text-xs text-gray-400">Need {innings.target - innings.totalRuns} · RRR {requiredRunRate(innings.target, innings.totalRuns, match.maxOvers * 6 - innings.totalLegalBalls)}</p>
+            </div>
+          ) : (
+            <div className="text-right">
+              <p className="text-xs text-gray-400">RR {runRate(innings.totalRuns, innings.totalLegalBalls)}</p>
+              <p className="text-xs text-gray-500">{match.maxOvers} overs</p>
+            </div>
+          )}
+        </div>
+      )}
       {/* Score header */}
-      <div className="bg-gray-800 px-4 py-4">
+      <div ref={scoreHeaderRef} className="bg-gray-800 px-4 py-4">
         {match.isSuperOver && (
           <div className="bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 text-xs font-bold px-3 py-1.5 rounded-lg mb-2 text-center tracking-wide">
             ⚡ SUPER OVER
@@ -685,7 +727,8 @@ export default function Scoring() {
                     if (e === 'wide') {
                       // Wides auto-record as 1 extra immediately — no run tap needed
                       if (!innings!.strikerId || !innings!.bowlerId) return
-                      recordBall({
+                        hapticLight()
+                        recordBall({
                         runsOffBat: 0,
                         extras: 1,
                         extraType: 'wide',

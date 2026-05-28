@@ -67,6 +67,7 @@ export default function Players() {
   const [leaderboardSort, setLeaderboardSort] = useState<'points' | 'mvps'>('points')
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [potmData, setPotmData] = useState<LeaderboardEntry | null>(null)
+  const [potdData, setPotdData] = useState<LeaderboardEntry | null>(null)
   const [leaderboardLoading, setLeaderboardLoading] = useState(false)
   const potmLoadedRef = useRef(false)
 
@@ -100,13 +101,18 @@ export default function Players() {
         const since = getSince(leaderboardPeriod)
         const data = await fetchLeaderboard(since)
         setLeaderboard(data)
-        // Load Player of the Month once per session
+        // Load Player of the Month + Player of the Day once per session
         if (!potmLoadedRef.current) {
           potmLoadedRef.current = true
           const monthStart = new Date()
           monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0)
           const potm = await fetchLeaderboard(monthStart.toISOString())
           setPotmData(potm[0] ?? null)
+          // Player of the Day — today from midnight
+          const todayStart = new Date()
+          todayStart.setHours(0, 0, 0, 0)
+          const potd = await fetchLeaderboard(todayStart.toISOString())
+          setPotdData(potd[0] ?? null)
         }
       } catch {
         setLeaderboard([])
@@ -279,6 +285,34 @@ export default function Players() {
               </button>
             ))}
           </div>
+
+          {/* Player of the Day spotlight */}
+          {potdData && (
+            <div className="relative mb-3 rounded-2xl overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-orange-500/20 via-red-600/10 to-pink-500/20 border border-orange-500/30 rounded-2xl" />
+              <div className="relative px-4 py-3">
+                <p className="text-xs font-bold uppercase tracking-widest text-orange-400 mb-2">☀️ Player of the Day</p>
+                <button
+                  className="w-full text-left flex items-center gap-3"
+                  onClick={() => navigate(`/players/${encodeURIComponent(potdData.playerName)}`)}
+                >
+                  <div className="text-3xl">🏏</div>
+                  <div className="flex-1">
+                    <p className="text-lg font-bold text-orange-300">{potdData.playerName}</p>
+                    <p className="text-xs text-gray-400">
+                      {potdData.totalMvpPoints} pts today
+                      {potdData.totalRuns > 0 && ` · ${potdData.totalRuns} runs`}
+                      {potdData.totalWickets > 0 && ` · ${potdData.totalWickets} wkts`}
+                    </p>
+                  </div>
+                  <div className="text-center bg-orange-900/40 border border-orange-700/40 rounded-xl px-3 py-1.5">
+                    <p className="text-lg font-bold text-orange-400">{potdData.totalMvpPoints}</p>
+                    <p className="text-xs text-gray-500">pts</p>
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Player of the Month spotlight */}
           {potmData && (
