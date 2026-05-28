@@ -1,6 +1,6 @@
 ﻿import { supabase } from '../config/supabase'
 import type { Match } from '../types/cricket'
-import type { PlayerRecord, MatchRecord, PlayerMatchStat, CareerBatting, CareerBowling, CareerFielding } from './types'
+import type { PlayerRecord, MatchRecord, PlayerMatchStat, CareerBatting, CareerBowling, CareerFielding, LeaderboardEntry } from './types'
 import { computeMvp } from '../utils/mvp'
 
 // ─── Row mappers (DB snake_case → TS camelCase) ────────────────────────────
@@ -349,4 +349,33 @@ export function computeCareerBowling(stats: PlayerMatchStat[]): CareerBowling {
     legalBalls, runsConceded, wickets, maidens, economy, average, strikeRate,
     bestWickets: best.w, bestRuns: best.r,
   }
+}
+
+export async function fetchLeaderboard(since?: string): Promise<LeaderboardEntry[]> {
+  let query = supabase
+    .from('player_stats')
+    .select('player_name, is_mvp, bat_runs, bowl_wickets, match_id, match_date, bat_did_bat')
+  if (since) query = query.gte('match_date', since)
+  const { data, error } = await query
+  if (error) throw error
+
+  const map: Record<string, { mvpWins: number; totalRuns: number; totalWickets: number; matchIds: Set<string> }> = {}
+  for (const r of (data ?? [])) {
+    const name = r.player_name as string
+    if (!map[name]) map[name] = { mvpWins: 0, totalRuns: 0, totalWickets: 0, matchIds: new Set() }
+    map[name].matchIds.add(r.match_id as string)
+    if (r.is_mvp) map[name].mvpWins += 1
+    if (r.bat_did_bat) map[name].totalRuns += (r.bat_runs as number) || 0
+    map[name].totalWickets += (r.bowl_wickets as number) || 0
+  }
+
+  return Object.entries(map)
+    .map(([playerName, s]) => ({
+      playerName,
+      mvpWins: s.mvpWins,
+      totalRuns: s.totalRuns,
+      totalWickets: s.totalWickets,
+      matches: s.matchIds.size,
+    }))
+    .sort((a, b) => (b.mvpWins !== a.mvpWins ? b.mvpWins - a.mvpWins : b.totalRuns - a.totalRuns))
 }

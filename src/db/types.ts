@@ -80,3 +80,11 @@ export interface CareerFielding {
   stumpings: number
   total: number
 }
+
+export interface LeaderboardEntry {
+  playerName: string
+  mvpWins: number
+  totalRuns: number
+  totalWickets: number
+  matches: number
+}

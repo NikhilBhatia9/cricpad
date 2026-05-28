@@ -4,6 +4,41 @@ import { fetchPlayer, fetchPlayerStats, fetchMatchesByIds, computeCareerBatting,
 import type { PlayerRecord, MatchRecord, PlayerMatchStat } from '../db/types'
 import BackButton from '../components/BackButton'
 
+interface Badge {
+  emoji: string
+  label: string
+  description: string
+}
+
+function computeBadges(stats: PlayerMatchStat[], totalMatches: number): Badge[] {
+  const badges: Badge[] = []
+  const bat = stats.filter((s) => s.batDidBat)
+  const bowl = stats.filter((s) => s.bowlDidBowl)
+  const mvpWins = new Set(stats.filter((s) => s.isMvp).map((s) => s.matchId)).size
+  const totalRuns = bat.reduce((s, r) => s + r.batRuns, 0)
+  const totalWickets = bowl.reduce((s, r) => s + r.bowlWickets, 0)
+  const totalSixes = bat.reduce((s, r) => s + r.batSixes, 0)
+  const totalCatches = stats.reduce((s, r) => s + (r.fieldCatches ?? 0), 0)
+  const totalMaidens = bowl.reduce((s, r) => s + (r.bowlMaidens ?? 0), 0)
+  const has50 = bat.some((s) => s.batRuns >= 50 && s.batRuns < 100)
+  const has100 = bat.some((s) => s.batRuns >= 100)
+  const hasHatTrick = bowl.some((s) => s.bowlWickets >= 3)
+
+  if (totalMatches >= 5)    badges.push({ emoji: '🦾', label: 'Ironman',       description: 'Played 5+ matches' })
+  if (mvpWins >= 1)         badges.push({ emoji: '⭐', label: 'MVP',            description: 'Won Player of the Match' })
+  if (mvpWins >= 3)         badges.push({ emoji: '🏆', label: 'MVP Legend',     description: 'Won 3+ MVP awards' })
+  if (has50)                badges.push({ emoji: '🔥', label: '50 Club',        description: 'Scored 50+ in a match' })
+  if (has100)               badges.push({ emoji: '💯', label: 'Century Club',   description: 'Scored 100+ in a match' })
+  if (totalRuns >= 200)     badges.push({ emoji: '🏃', label: 'Run Machine',    description: '200+ career runs' })
+  if (totalSixes >= 10)     badges.push({ emoji: '💥', label: 'Six Machine',    description: '10+ career sixes' })
+  if (hasHatTrick)          badges.push({ emoji: '🎳', label: 'Hat-trick Hero', description: '3+ wickets in a match' })
+  if (totalWickets >= 5)    badges.push({ emoji: '🎯', label: 'Wicket Hunter',  description: '5+ career wickets' })
+  if (totalMaidens >= 2)    badges.push({ emoji: '🔇', label: 'Miser',          description: '2+ maiden overs' })
+  if (totalCatches >= 3)    badges.push({ emoji: '🧤', label: 'Safe Hands',     description: '3+ catches' })
+
+  return badges
+}
+
 export default function PlayerDetail() {
   const { name } = useParams<{ name: string }>()
   const navigate = useNavigate()
@@ -50,6 +85,7 @@ export default function PlayerDetail() {
   const bowl = computeCareerBowling(stats)
   const field = computeCareerFielding(stats)
   const matchIds = [...new Set(stats.map((s) => s.matchId))]
+  const badges = computeBadges(stats, matchIds.length)
 
   // Win / Loss / Tie per match
   const record = playerMatches.reduce(
@@ -161,6 +197,31 @@ export default function PlayerDetail() {
             <StatBox label="Catches" value={field.catches} />
             <StatBox label="Run Outs" value={field.runOuts} />
             <StatBox label="Stumpings" value={field.stumpings} />
+          </div>
+        </div>
+      )}
+
+      {/* Badges */}
+      {badges.length > 0 && (
+        <div className="card mb-4">
+          <h2 className="font-semibold text-gray-300 mb-3">🎖️ Badges</h2>
+          <div className="flex flex-wrap gap-2">
+            {badges.map((b) => (
+              <div
+                key={b.label}
+                className="group relative flex items-center gap-1.5 bg-gray-800 border border-gray-700 hover:border-yellow-500/50 rounded-full px-3 py-1.5 cursor-default transition-colors"
+                title={b.description}
+              >
+                <span className="text-base">{b.emoji}</span>
+                <span className="text-xs font-semibold text-gray-300">{b.label}</span>
+                {/* Tooltip */}
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10 pointer-events-none">
+                  <div className="bg-gray-900 border border-gray-600 rounded-lg px-2.5 py-1.5 text-xs text-gray-300 whitespace-nowrap shadow-lg">
+                    {b.description}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
