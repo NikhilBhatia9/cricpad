@@ -114,7 +114,7 @@ export default function PlayerDetail() {
         <div className="card mb-4">
           <h2 className="font-semibold text-gray-300 mb-3">&#x1F3CF; Batting</h2>
           <div className="grid grid-cols-4 gap-2 mb-3">
-            <StatBox label="Matches" value={bat.matches} />
+            <StatBox label="Matches" value={matchIds.length} />
             <StatBox label="Innings" value={bat.innings} />
             <StatBox label="Runs" value={bat.totalRuns} highlight />
             <StatBox label="Average" value={bat.average} />
