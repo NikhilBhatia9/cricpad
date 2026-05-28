@@ -6,6 +6,8 @@ import type { Team, Player } from '../types/cricket'
 import { fetchAllPlayers, fetchPlayerStats, fetchMatchResultsMap } from '../db/operations'
 import type { PlayerMatchStat } from '../db/types'
 import BackButton from '../components/BackButton'
+import { getSavedTeams } from '../utils/savedTeams'
+import type { SavedTeam } from '../utils/savedTeams'
 
 type Assignment = 'A' | 'B' | 'both'
 
@@ -26,8 +28,11 @@ export default function MatchSetup() {
   const [newName, setNewName] = useState('')
   const [statsMap, setStatsMap] = useState<Record<string, PlayerMatchStat[]>>({})
   const [matchResults, setMatchResults] = useState<Record<string, string>>({})
+  const [savedTeams, setSavedTeams] = useState<SavedTeam[]>([])
+  const [loadTeamSlot, setLoadTeamSlot] = useState<'A' | 'B' | null>(null))
 
   useEffect(() => {
+    setSavedTeams(getSavedTeams())
     fetchAllPlayers()
       .then((ps) => {
         const names = ps.map((p) => p.name)
@@ -82,6 +87,30 @@ export default function MatchSetup() {
     setNewName('')
   }
 
+  function loadSavedTeam(team: SavedTeam, slot: 'A' | 'B') {
+    // Set team name
+    if (slot === 'A') setTeamAName(team.name)
+    else setTeamBName(team.name)
+    // Add any players not already in pool
+    const newPlayers = team.playerNames.filter((n) => !pool.includes(n))
+    if (newPlayers.length > 0) setPool((prev) => [...prev, ...newPlayers])
+    // Assign players to slot (other assignments preserved)
+    setAssignments((prev) => {
+      const next = { ...prev }
+      team.playerNames.forEach((n) => {
+        const current = next[n] as Assignment | undefined
+        if (!current) {
+          next[n] = slot
+        } else if (current !== slot && current !== 'both') {
+          next[n] = 'both'
+        }
+        // already in this slot or 'both' — no change
+      })
+      return next
+    })
+    setLoadTeamSlot(null)
+  }
+
   function handleStart() {
     if (!teamAName.trim() || !teamBName.trim()) return alert('Enter both team names')
     if (teamAPlayers.length < 2) return alert('Assign at least 2 players to Team A')
@@ -91,6 +120,57 @@ export default function MatchSetup() {
       Number(overs)
     )
     navigate('/toss')
+  }
+
+  // ── Load Team modal ─────────────────────────────────────────────────────────
+  if (loadTeamSlot) {
+    const slotColor = loadTeamSlot === 'A' ? 'text-green-400' : 'text-blue-400'
+    return (
+      <div className="px-4 py-6 max-w-lg mx-auto pb-10">
+        <div className="flex items-center gap-3 mb-5">
+          <BackButton onClick={() => setLoadTeamSlot(null)} label="Back" />
+          <h1 className="text-xl font-bold">
+            Load Team for <span className={slotColor}>Team {loadTeamSlot}</span>
+          </h1>
+        </div>
+        {savedTeams.length === 0 ? (
+          <div className="card text-center py-10">
+            <p className="text-4xl mb-3">🛡️</p>
+            <p className="text-gray-300 font-semibold mb-1">No saved teams</p>
+            <p className="text-gray-500 text-sm mb-5">Create teams in the Teams section first.</p>
+            <button className="btn-primary" onClick={() => navigate('/teams')}>Go to Teams</button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {savedTeams.map((team) => (
+              <button
+                key={team.id}
+                className="w-full card text-left hover:bg-gray-700/50 transition-colors"
+                onClick={() => loadSavedTeam(team, loadTeamSlot)}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="text-3xl">🛡️</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold">{team.name}</p>
+                    <p className="text-xs text-gray-400">
+                      {team.playerNames.length} players &middot;{' '}
+                      {team.playerNames.slice(0, 5).join(', ')}{team.playerNames.length > 5 ? `... +${team.playerNames.length - 5}` : ''}
+                    </p>
+                  </div>
+                  <span className={`text-sm font-bold ${slotColor}`}>Load →</span>
+                </div>
+              </button>
+            ))}
+            <button
+              className="w-full text-center text-xs text-gray-500 hover:text-gray-300 py-2 transition-colors"
+              onClick={() => navigate('/teams')}
+            >
+              + Manage saved teams
+            </button>
+          </div>
+        )}
+      </div>
+    )
   }
 
   return (
@@ -127,7 +207,17 @@ export default function MatchSetup() {
       {/* Team names */}
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div className="card">
-          <label className="block text-xs text-green-400 font-bold mb-1.5 uppercase tracking-wide">Team A</label>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="block text-xs text-green-400 font-bold uppercase tracking-wide">Team A</label>
+            {savedTeams.length > 0 && (
+              <button
+                onClick={() => setLoadTeamSlot('A')}
+                className="text-xs text-gray-400 hover:text-green-400 flex items-center gap-1 transition-colors"
+              >
+                📂 Load
+              </button>
+            )}
+          </div>
           <input
             className="input-field font-semibold"
             placeholder="Team name"
@@ -137,7 +227,17 @@ export default function MatchSetup() {
           <p className="text-xs text-gray-500 mt-2">{teamAPlayers.length} player{teamAPlayers.length !== 1 ? 's' : ''} selected</p>
         </div>
         <div className="card">
-          <label className="block text-xs text-blue-400 font-bold mb-1.5 uppercase tracking-wide">Team B</label>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="block text-xs text-blue-400 font-bold uppercase tracking-wide">Team B</label>
+            {savedTeams.length > 0 && (
+              <button
+                onClick={() => setLoadTeamSlot('B')}
+                className="text-xs text-gray-400 hover:text-blue-400 flex items-center gap-1 transition-colors"
+              >
+                📂 Load
+              </button>
+            )}
+          </div>
           <input
             className="input-field font-semibold"
             placeholder="Team name"
