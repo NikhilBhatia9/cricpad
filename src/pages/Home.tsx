@@ -110,6 +110,11 @@ export default function Home() {
           onClick={() => navigate('/join')}
           horizontal
         />
+
+        {/* Footer */}
+        <p className="text-center text-xs text-gray-500 dark:text-gray-600 pt-2 pb-1">
+          © {new Date().getFullYear()} CricPad. All rights reserved.
+        </p>
       </div>
     </div>
   )
