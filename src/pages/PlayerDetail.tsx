@@ -112,6 +112,27 @@ export default function PlayerDetail() {
         <h1 className="text-2xl font-bold">{player.name}</h1>
         <p className="text-gray-400 text-sm mt-1">{matchIds.length} match{matchIds.length !== 1 ? 'es' : ''} played</p>
 
+        {/* Badges row — right below the name */}
+        {badges.length > 0 && (
+          <div className="flex flex-wrap justify-center gap-1.5 mt-2">
+            {badges.map((b) => (
+              <div
+                key={b.label}
+                className="group relative flex items-center gap-1 bg-gray-800 border border-gray-700 hover:border-yellow-500/50 rounded-full px-2.5 py-1 cursor-default transition-colors"
+                title={b.description}
+              >
+                <span className="text-sm">{b.emoji}</span>
+                <span className="text-xs font-semibold text-gray-300">{b.label}</span>
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10 pointer-events-none">
+                  <div className="bg-gray-900 border border-gray-600 rounded-lg px-2.5 py-1.5 text-xs text-gray-300 whitespace-nowrap shadow-lg">
+                    {b.description}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* W / L / T record */}
         {matchIds.length > 0 && (
           <div className="flex justify-center gap-3 mt-3">
@@ -197,31 +218,6 @@ export default function PlayerDetail() {
             <StatBox label="Catches" value={field.catches} />
             <StatBox label="Run Outs" value={field.runOuts} />
             <StatBox label="Stumpings" value={field.stumpings} />
-          </div>
-        </div>
-      )}
-
-      {/* Badges */}
-      {badges.length > 0 && (
-        <div className="card mb-4">
-          <h2 className="font-semibold text-gray-300 mb-3">🎖️ Badges</h2>
-          <div className="flex flex-wrap gap-2">
-            {badges.map((b) => (
-              <div
-                key={b.label}
-                className="group relative flex items-center gap-1.5 bg-gray-800 border border-gray-700 hover:border-yellow-500/50 rounded-full px-3 py-1.5 cursor-default transition-colors"
-                title={b.description}
-              >
-                <span className="text-base">{b.emoji}</span>
-                <span className="text-xs font-semibold text-gray-300">{b.label}</span>
-                {/* Tooltip */}
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10 pointer-events-none">
-                  <div className="bg-gray-900 border border-gray-600 rounded-lg px-2.5 py-1.5 text-xs text-gray-300 whitespace-nowrap shadow-lg">
-                    {b.description}
-                  </div>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       )}

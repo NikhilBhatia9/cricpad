@@ -359,12 +359,12 @@ export async function fetchLeaderboard(since?: string): Promise<LeaderboardEntry
   const { data, error } = await query
   if (error) throw error
 
-  const map: Record<string, { mvpWins: number; totalRuns: number; totalWickets: number; matchIds: Set<string> }> = {}
+  const map: Record<string, { mvpMatchIds: Set<string>; totalRuns: number; totalWickets: number; matchIds: Set<string> }> = {}
   for (const r of (data ?? [])) {
     const name = r.player_name as string
-    if (!map[name]) map[name] = { mvpWins: 0, totalRuns: 0, totalWickets: 0, matchIds: new Set() }
+    if (!map[name]) map[name] = { mvpMatchIds: new Set(), totalRuns: 0, totalWickets: 0, matchIds: new Set() }
     map[name].matchIds.add(r.match_id as string)
-    if (r.is_mvp) map[name].mvpWins += 1
+    if (r.is_mvp) map[name].mvpMatchIds.add(r.match_id as string)
     if (r.bat_did_bat) map[name].totalRuns += (r.bat_runs as number) || 0
     map[name].totalWickets += (r.bowl_wickets as number) || 0
   }
@@ -372,7 +372,7 @@ export async function fetchLeaderboard(since?: string): Promise<LeaderboardEntry
   return Object.entries(map)
     .map(([playerName, s]) => ({
       playerName,
-      mvpWins: s.mvpWins,
+      mvpWins: s.mvpMatchIds.size,
       totalRuns: s.totalRuns,
       totalWickets: s.totalWickets,
       matches: s.matchIds.size,
