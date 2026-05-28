@@ -296,7 +296,7 @@ export default function Players() {
                       {potmData.mvpWins > 0
                         ? `${potmData.mvpWins} MVP win${potmData.mvpWins !== 1 ? 's' : ''} this month`
                         : 'Top performer this month'}{' '}
-                      · {potmData.totalRuns} runs · {potmData.totalWickets} wkts
+                      · {potmData.totalMvpPoints} pts · {potmData.totalRuns} runs · {potmData.totalWickets} wkts
                     </p>
                   </div>
                 </button>
@@ -329,9 +329,15 @@ export default function Players() {
                           {entry.matches} match{entry.matches !== 1 ? 'es' : ''} · {entry.totalRuns} runs · {entry.totalWickets} wkt{entry.totalWickets !== 1 ? 's' : ''}
                         </p>
                       </div>
-                      <div className="text-center bg-yellow-900/40 border border-yellow-700/40 rounded-xl px-3 py-1.5 min-w-[60px] flex-shrink-0">
-                        <p className="text-lg font-bold text-yellow-400">{entry.mvpWins}</p>
-                        <p className="text-xs text-gray-500">MVP{entry.mvpWins !== 1 ? 's' : ''}</p>
+                      <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                        <div className="text-center bg-yellow-900/40 border border-yellow-700/40 rounded-xl px-3 py-1 min-w-[60px]">
+                          <p className="text-base font-bold text-yellow-400">{entry.mvpWins}</p>
+                          <p className="text-xs text-gray-500">MVP{entry.mvpWins !== 1 ? 's' : ''}</p>
+                        </div>
+                        <div className="text-center bg-purple-900/40 border border-purple-700/40 rounded-xl px-3 py-1 min-w-[60px]">
+                          <p className="text-base font-bold text-purple-300">{entry.totalMvpPoints}</p>
+                          <p className="text-xs text-gray-500">pts</p>
+                        </div>
                       </div>
                     </div>
                   </button>

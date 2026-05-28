@@ -351,31 +351,77 @@ export function computeCareerBowling(stats: PlayerMatchStat[]): CareerBowling {
   }
 }
 
+function calcRowPoints(r: Record<string, unknown>): number {
+  let pts = 0
+  const batDidBat = !!r.bat_did_bat
+  const bowlDidBowl = !!r.bowl_did_bowl
+  const batRuns = (r.bat_runs as number) || 0
+  const batBalls = (r.bat_balls as number) || 0
+  const batFours = (r.bat_fours as number) || 0
+  const batSixes = (r.bat_sixes as number) || 0
+  const batIsOut = !!r.bat_is_out
+  const bowlWickets = (r.bowl_wickets as number) || 0
+  const bowlLegalBalls = (r.bowl_legal_balls as number) || 0
+  const bowlRunsConceded = (r.bowl_runs_conceded as number) || 0
+  const bowlMaidens = (r.bowl_maidens as number) || 0
+
+  if (batDidBat) {
+    pts += batRuns + batFours * 2 + batSixes * 3
+    if (batBalls >= 10) {
+      const sr = (batRuns / batBalls) * 100
+      if (sr > 150) pts += 20
+      else if (sr > 120) pts += 10
+      else if (sr < 60) pts -= 5
+    }
+    if (batRuns >= 100) pts += 50
+    else if (batRuns >= 50) pts += 25
+    else if (batRuns >= 25) pts += 15
+    if (!batIsOut) pts += 5
+  }
+
+  if (bowlDidBowl && bowlLegalBalls > 0) {
+    pts += bowlWickets * 20
+    if (bowlWickets >= 3) pts += 20
+    else if (bowlWickets >= 2) pts += 10
+    if (bowlLegalBalls >= 6) {
+      const eco = (bowlRunsConceded / bowlLegalBalls) * 6
+      if (eco < 6) pts += 15
+      else if (eco < 8) pts += 8
+      else if (eco > 14) pts -= 10
+    }
+    pts += bowlMaidens * 10
+  }
+
+  return Math.max(0, pts)
+}
+
 export async function fetchLeaderboard(since?: string): Promise<LeaderboardEntry[]> {
   let query = supabase
     .from('player_stats')
-    .select('player_name, is_mvp, bat_runs, bowl_wickets, match_id, match_date, bat_did_bat')
+    .select('player_name, is_mvp, bat_runs, bat_balls, bat_fours, bat_sixes, bat_is_out, bat_did_bat, bowl_wickets, bowl_legal_balls, bowl_runs_conceded, bowl_maidens, bowl_did_bowl, match_id, match_date')
   if (since) query = query.gte('match_date', since)
   const { data, error } = await query
   if (error) throw error
 
-  const map: Record<string, { mvpMatchIds: Set<string>; totalRuns: number; totalWickets: number; matchIds: Set<string> }> = {}
+  const map: Record<string, { mvpMatchIds: Set<string>; totalMvpPoints: number; totalRuns: number; totalWickets: number; matchIds: Set<string> }> = {}
   for (const r of (data ?? [])) {
     const name = r.player_name as string
-    if (!map[name]) map[name] = { mvpMatchIds: new Set(), totalRuns: 0, totalWickets: 0, matchIds: new Set() }
+    if (!map[name]) map[name] = { mvpMatchIds: new Set(), totalMvpPoints: 0, totalRuns: 0, totalWickets: 0, matchIds: new Set() }
     map[name].matchIds.add(r.match_id as string)
     if (r.is_mvp) map[name].mvpMatchIds.add(r.match_id as string)
     if (r.bat_did_bat) map[name].totalRuns += (r.bat_runs as number) || 0
     map[name].totalWickets += (r.bowl_wickets as number) || 0
+    map[name].totalMvpPoints += calcRowPoints(r as Record<string, unknown>)
   }
 
   return Object.entries(map)
     .map(([playerName, s]) => ({
       playerName,
       mvpWins: s.mvpMatchIds.size,
+      totalMvpPoints: s.totalMvpPoints,
       totalRuns: s.totalRuns,
       totalWickets: s.totalWickets,
       matches: s.matchIds.size,
     }))
-    .sort((a, b) => (b.mvpWins !== a.mvpWins ? b.mvpWins - a.mvpWins : b.totalRuns - a.totalRuns))
+    .sort((a, b) => (b.mvpWins !== a.mvpWins ? b.mvpWins - a.mvpWins : b.totalMvpPoints - a.totalMvpPoints))
 }

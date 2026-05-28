@@ -84,6 +84,7 @@ export interface CareerFielding {
 export interface LeaderboardEntry {
   playerName: string
   mvpWins: number
+  totalMvpPoints: number
   totalRuns: number
   totalWickets: number
   matches: number
