@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from 'react'
+﻿import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { fetchAllMatches, fetchMatch } from '../db/operations'
 import type { MatchRecord } from '../db/types'
@@ -9,17 +9,59 @@ import { computeMvp, mvpNarrative } from '../utils/mvp'
 import ScorecardImage from '../components/ScorecardImage'
 import { captureAndShare } from '../utils/shareScorecard'
 
+type HistoryPeriod = 'all' | 'year' | 'month' | 'week' | 'today'
+
+const PERIOD_LABELS: { key: HistoryPeriod; label: string }[] = [
+  { key: 'today', label: 'Today' },
+  { key: 'week',  label: 'Week' },
+  { key: 'month', label: 'Month' },
+  { key: 'year',  label: 'Year' },
+  { key: 'all',   label: 'All' },
+]
+
+function getPeriodCutoff(period: HistoryPeriod): Date | null {
+  const now = new Date()
+  if (period === 'today') return new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  if (period === 'week')  { const d = new Date(now); d.setDate(d.getDate() - 7); return d }
+  if (period === 'month') return new Date(now.getFullYear(), now.getMonth(), 1)
+  if (period === 'year')  return new Date(now.getFullYear(), 0, 1)
+  return null
+}
+
 export default function MatchHistory() {
   const navigate = useNavigate()
   const { id } = useParams<{ id?: string }>()
 
   const [matches, setMatches] = useState<MatchRecord[] | null>(null)
+  const [period, setPeriod] = useState<HistoryPeriod>('all')
 
   useEffect(() => {
     if (!id) {
       fetchAllMatches().then(setMatches)
     }
   }, [id])
+
+  const filteredMatches = useMemo(() => {
+    if (!matches) return []
+    const cutoff = getPeriodCutoff(period)
+    if (!cutoff) return matches
+    return matches.filter((m) => new Date(m.completedAt) >= cutoff)
+  }, [matches, period])
+
+  // Group by "Month Year" label
+  const groupedMatches = useMemo(() => {
+    const groups: { label: string; items: MatchRecord[] }[] = []
+    const map: Record<string, MatchRecord[]> = {}
+    for (const m of filteredMatches) {
+      const key = new Date(m.completedAt).toLocaleDateString('en-NZ', { month: 'long', year: 'numeric' })
+      if (!map[key]) {
+        map[key] = []
+        groups.push({ label: key, items: map[key] })
+      }
+      map[key].push(m)
+    }
+    return groups
+  }, [filteredMatches])
 
   if (id) {
     return <MatchDetail matchId={id} onBack={() => navigate('/history')} />
@@ -51,32 +93,68 @@ export default function MatchHistory() {
 
   return (
     <div className="px-4 py-6 max-w-lg mx-auto">
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-4">
         <BackButton onClick={() => navigate('/')} />
         <h1 className="text-xl font-bold">Match History</h1>
-        <span className="ml-auto text-gray-500 text-sm">{matches.length} match{matches.length !== 1 ? 'es' : ''}</span>
+        <span className="ml-auto text-gray-500 text-sm">{filteredMatches.length} match{filteredMatches.length !== 1 ? 'es' : ''}</span>
       </div>
 
-      <div className="space-y-3">
-        {matches.map((m) => (
+      {/* Period filter */}
+      <div className="flex gap-1 mb-5">
+        {PERIOD_LABELS.map(({ key, label }) => (
           <button
-            key={m.id}
-            className="card w-full text-left hover:bg-gray-700/80 transition-colors active:scale-[0.99]"
-            onClick={() => navigate(`/history/${m.id}`)}
+            key={key}
+            onClick={() => setPeriod(key)}
+            className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              period === key ? 'bg-green-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
+            }`}
           >
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="font-bold">{m.teamAName} vs {m.teamBName}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{m.maxOvers} overs &middot; {new Date(m.completedAt).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-              </div>
-              <span className="text-gray-500 text-lg">&#x203A;</span>
-            </div>
-            {m.result && (
-              <p className="text-sm text-green-400 mt-2 font-medium">{m.result}</p>
-            )}
+            {label}
           </button>
         ))}
       </div>
+
+      {filteredMatches.length === 0 ? (
+        <div className="text-center py-16">
+          <p className="text-4xl mb-3">📋</p>
+          <p className="text-gray-400">No matches in this period.</p>
+          {period !== 'all' && (
+            <button className="mt-3 text-sm text-green-400 hover:text-green-300" onClick={() => setPeriod('all')}>
+              View all matches →
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {groupedMatches.map(({ label, items }) => (
+            <div key={label}>
+              <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-2 px-1">{label}</p>
+              <div className="space-y-2">
+                {items.map((m) => (
+                  <button
+                    key={m.id}
+                    className="card w-full text-left hover:bg-gray-700/80 transition-colors active:scale-[0.99]"
+                    onClick={() => navigate(`/history/${m.id}`)}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-bold">{m.teamAName} vs {m.teamBName}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {m.maxOvers} overs &middot; {new Date(m.completedAt).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })}
+                        </p>
+                      </div>
+                      <span className="text-gray-500 text-lg">&#x203A;</span>
+                    </div>
+                    {m.result && (
+                      <p className="text-sm text-green-400 mt-2 font-medium">{m.result}</p>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

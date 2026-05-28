@@ -61,6 +61,7 @@ export default function Players() {
   const [editSaving, setEditSaving] = useState(false)
   const [compareMode, setCompareMode] = useState(false)
   const [compareA, setCompareA] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
 
   // Leaderboard state
   const [leaderboardPeriod, setLeaderboardPeriod] = useState<LeaderboardPeriod>('all')
@@ -205,6 +206,12 @@ export default function Players() {
       }
     })
   }, [players, statsMap, matchResults, sortKey])
+
+  const filteredPlayers = useMemo(() =>
+    searchQuery.trim()
+      ? sortedPlayers.filter((p) => p.name.toLowerCase().includes(searchQuery.toLowerCase().trim()))
+      : sortedPlayers
+  , [sortedPlayers, searchQuery])
 
   if (!players) {
     return (
@@ -442,6 +449,27 @@ export default function Players() {
             </div>
           )}
 
+          {/* Search */}
+          {players && players.length > 0 && (
+            <div className="mb-4 relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">🔍</span>
+              <input
+                className="input-field pl-9 w-full"
+                placeholder="Search players…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                  onClick={() => setSearchQuery('')}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Sort dropdown */}
           {players && players.length > 0 && (
             <div className="mb-4 flex items-center gap-2">
@@ -472,8 +500,14 @@ export default function Players() {
             </div>
           )}
 
+          {players && players.length > 0 && filteredPlayers.length === 0 && (
+            <div className="text-center py-10 text-gray-500 text-sm">
+              No players match &ldquo;{searchQuery}&rdquo;
+            </div>
+          )}
+
           <div className="space-y-3">
-            {sortedPlayers.map((player) => {
+            {filteredPlayers.map((player) => {
               const stats = statsMap[player.name] ?? []
               const bat = computeCareerBatting(stats)
               const bowl = computeCareerBowling(stats)
