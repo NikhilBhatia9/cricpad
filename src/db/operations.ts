@@ -310,7 +310,7 @@ export function computeCareerBatting(stats: PlayerMatchStat[]): CareerBatting {
   const totalBalls = bat.reduce((sum, s) => sum + s.batBalls, 0)
   const strikeRate = totalBalls > 0 ? ((totalRuns / totalBalls) * 100).toFixed(1) : '-'
   return {
-    matches: new Set(bat.map((s) => s.matchId)).size,
+    matches: new Set(stats.map((s) => s.matchId)).size,
     innings, notOuts, totalRuns, highestScore, average, strikeRate,
     fifties: bat.filter((s) => s.batRuns >= 50 && s.batRuns < 100).length,
     hundreds: bat.filter((s) => s.batRuns >= 100).length,
