@@ -29,7 +29,7 @@ export default function MatchSetup() {
   const [statsMap, setStatsMap] = useState<Record<string, PlayerMatchStat[]>>({})
   const [matchResults, setMatchResults] = useState<Record<string, string>>({})
   const [savedTeams, setSavedTeams] = useState<SavedTeam[]>([])
-  const [loadTeamSlot, setLoadTeamSlot] = useState<'A' | 'B' | null>(null))
+  const [loadTeamSlot, setLoadTeamSlot] = useState<'A' | 'B' | null>(null)
 
   useEffect(() => {
     setSavedTeams(getSavedTeams())
