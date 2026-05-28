@@ -56,7 +56,7 @@ const ScorecardImage = forwardRef<HTMLDivElement, Props>(({ match, completedAt }
 
       {/* Header */}
       <div style={s.header}>
-        <div style={s.appLabel}>&#x1F3CF; Social Cricket Scorer</div>
+        <div style={s.appLabel}>🏏 CricPad</div>
         <div style={s.vs}>{match.teams[0].name} vs {match.teams[1].name}</div>
         {completedAt && (
           <div style={s.date}>
@@ -144,7 +144,7 @@ const ScorecardImage = forwardRef<HTMLDivElement, Props>(({ match, completedAt }
       )}
 
       {/* Footer */}
-      <div style={s.footer}>nikhilbhatia9.github.io/social-cricket-scorer</div>
+      <div style={s.footer}>cricpad.app</div>
     </div>
   )
 })

@@ -33,10 +33,10 @@ export default function Home() {
         <div className="relative">
           <img
             src="/social-cricket-scorer/icons/icon.svg"
-            alt="Cricket Scorer icon"
+            alt="CricPad icon"
             className="w-28 h-28 mx-auto mb-4 drop-shadow-xl rounded-3xl"
           />
-          <h1 className="text-3xl font-bold tracking-tight">Cricket Scorer</h1>
+          <h1 className="text-3xl font-bold tracking-tight">CricPad</h1>
           <p className="text-green-600 dark:text-green-400 text-sm font-semibold mt-1.5 tracking-wide italic">Built for bragging rights!</p>
         </div>
       </div>

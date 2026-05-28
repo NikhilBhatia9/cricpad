@@ -11,9 +11,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icons/*.png'],
       manifest: {
-        name: 'Cricket Scorer',
-        short_name: 'Cricket',
-        description: 'Social cricket scorer — live scoring for any match',
+        name: 'CricPad',
+        short_name: 'CricPad',
+        description: 'CricPad — live cricket scoring, stats & leaderboards for any match',
         theme_color: '#16a34a',
         background_color: '#111827',
         display: 'standalone',

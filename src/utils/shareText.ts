@@ -36,8 +36,8 @@ export function generateShareText(match: Match): string {
   }
 
   lines.push('')
-  lines.push('📱 Scored with Social Cricket Scorer')
-  lines.push('https://nikhilbhatia9.github.io/social-cricket-scorer')
+  lines.push('📱 Scored with CricPad')
+  lines.push('https://cricpad.app')
 
   return lines.join('\n')
 }
