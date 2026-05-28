@@ -89,7 +89,9 @@ export default function Scoring() {
   const [pendingWicketType, setPendingWicketType] = useState<WicketType | null>(null)
   const [showFielderSelect, setShowFielderSelect] = useState(false)
   const [showRunOutVictim, setShowRunOutVictim] = useState(false)
+  const [showRunOutRuns, setShowRunOutRuns] = useState(false)
   const [runOutNonStriker, setRunOutNonStriker] = useState(false)
+  const [runOutRuns, setRunOutRuns] = useState(0)
   const [overSummaryDismissed, setOverSummaryDismissed] = useState(-1)
   const [milestone, setMilestone] = useState<{ emoji: string; title: string; subtitle: string } | null>(null)
   const prevInningsRef = useRef<Innings | null>(null)
@@ -272,8 +274,10 @@ export default function Scoring() {
     if (!innings!.strikerId || !innings!.bowlerId) return
     // B-02: if a no-ball was pending, carry the 1-run penalty and mark not legal
     const isNoBall = pendingExtra === 'noball'
+    // Runs completed before run-out (e.g. batter ran 2, got out on 3rd)
+    const runsScored = type === 'Run Out' ? runOutRuns : 0
     recordBall({
-      runsOffBat: 0,
+      runsOffBat: runsScored,
       extras: isNoBall ? 1 : 0,
       extraType: isNoBall ? 'noball' : undefined,
       isWicket: true,
@@ -289,6 +293,7 @@ export default function Scoring() {
     setPendingWicketType(null)
     setShowFielderSelect(false)
     setRunOutNonStriker(false)
+    setRunOutRuns(0)
     setShowNewBatsman(true)
   }
 
@@ -374,7 +379,7 @@ export default function Scoring() {
         <p className="text-gray-400 text-sm text-center mb-6">Select the batsman who was run out</p>
         <div className="space-y-3 mb-4">
           <button
-            onClick={() => { setRunOutNonStriker(false); setShowRunOutVictim(false); setShowFielderSelect(true) }}
+            onClick={() => { setRunOutNonStriker(false); setShowRunOutVictim(false); setShowRunOutRuns(true) }}
             className="w-full bg-gray-700 hover:bg-gray-600 text-white font-semibold py-5 rounded-2xl text-lg transition-colors"
           >
             &#x26A1; {striker?.name ?? 'Striker'}
@@ -382,7 +387,7 @@ export default function Scoring() {
           </button>
           {nonStriker && (
             <button
-              onClick={() => { setRunOutNonStriker(true); setShowRunOutVictim(false); setShowFielderSelect(true) }}
+              onClick={() => { setRunOutNonStriker(true); setShowRunOutVictim(false); setShowRunOutRuns(true) }}
               className="w-full bg-gray-700 hover:bg-gray-600 text-white font-semibold py-5 rounded-2xl text-lg transition-colors"
             >
               &#x26A1; {nonStriker.name}
@@ -392,6 +397,30 @@ export default function Scoring() {
         </div>
         <button className="btn-secondary" onClick={() => { setShowRunOutVictim(false); setPendingWicketType(null) }}>
           Cancel
+        </button>
+      </div>
+    )
+  }
+
+  // ── 2b. Run out — runs completed ──
+  if (showRunOutRuns && pendingWicketType === 'Run Out') {
+    return (
+      <div className="flex flex-col min-h-screen px-4 py-6 max-w-lg mx-auto">
+        <h2 className="text-xl font-bold mb-2 text-center text-red-400">&#x26A1; Runs completed?</h2>
+        <p className="text-gray-400 text-sm text-center mb-6">How many runs did they complete before the run-out?</p>
+        <div className="grid grid-cols-4 gap-3 mb-4">
+          {[0, 1, 2, 3].map((r) => (
+            <button
+              key={r}
+              onClick={() => { setRunOutRuns(r); setShowRunOutRuns(false); setShowFielderSelect(true) }}
+              className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-6 rounded-2xl text-2xl transition-colors"
+            >
+              {r}
+            </button>
+          ))}
+        </div>
+        <button className="btn-secondary" onClick={() => { setShowRunOutRuns(false); setShowRunOutVictim(true) }}>
+          ← Back
         </button>
       </div>
     )
