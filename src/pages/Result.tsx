@@ -19,10 +19,9 @@ function computeOverData(inn: Innings): OverBarPoint[] {
   })
 }
 
-function RunRateGraph({ inn1, inn2, maxOvers, team1, team2 }: {
+function RunRateGraph({ inn1, inn2, team1, team2 }: {
   inn1: Innings | null
   inn2: Innings | null
-  maxOvers: number
   team1: string
   team2: string
 }) {
@@ -259,7 +258,6 @@ export default function Result() {
       <RunRateGraph
         inn1={i1}
         inn2={i2}
-        maxOvers={match.maxOvers}
         team1={match.teams[i1?.battingTeamIndex ?? 0].name}
         team2={match.teams[i2?.battingTeamIndex ?? 1].name}
       />
