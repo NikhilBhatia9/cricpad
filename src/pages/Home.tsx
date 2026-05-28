@@ -100,6 +100,7 @@ export default function Home() {
         <div className="grid grid-cols-2 gap-3">
           <NavCard icon="👥" title="Players" subtitle="Career stats" onClick={() => navigate('/players')} />
           <NavCard icon="🛡️" title="Teams" subtitle="Saved rosters" onClick={() => navigate('/teams')} />
+          <NavCard icon="🏆" title="Tournaments" subtitle="Mini leagues" onClick={() => navigate('/tournaments')} />
           <NavCard icon="📊" title="History" subtitle="Past matches" onClick={() => navigate('/history')} />
         </div>
         <NavCard

@@ -11,6 +11,7 @@ import PlayerComparison from './pages/PlayerComparison'
 import MatchHistory from './pages/MatchHistory'
 import JoinMatch from './pages/JoinMatch'
 import Teams from './pages/Teams'
+import Tournaments from './pages/Tournaments'
 import SyncManager from './components/SyncManager'
 import { useTheme } from './hooks/useTheme'
 
@@ -34,6 +35,7 @@ export default function App() {
           <Route path="/history/:id"             element={<MatchHistory />} />
           <Route path="/join"                    element={<JoinMatch />} />
           <Route path="/teams"                   element={<Teams />} />
+          <Route path="/tournaments"             element={<Tournaments />} />
           <Route path="*"                        element={<Navigate to="/" replace />} />
         </Routes>
       </div>

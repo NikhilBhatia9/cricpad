@@ -6,6 +6,7 @@ import { computeMvp, mvpNarrative } from '../utils/mvp'
 import { saveMatch } from '../db/operations'
 import ScorecardImage from '../components/ScorecardImage'
 import { captureAndShare } from '../utils/shareScorecard'
+import { generateShareText } from '../utils/shareText'
 import type { Innings } from '../types/cricket'
 
 interface OverBarPoint { over: number; runs: number; rr: number }
@@ -153,11 +154,123 @@ function RunRateGraph({ inn1, inn2, team1, team2 }: {
   )
 }
 
+function ScoreWorm({ inn1, inn2, team1, team2, maxOvers }: {
+  inn1: Innings | null
+  inn2: Innings | null
+  team1: string
+  team2: string
+  maxOvers: number
+}) {
+  function cumulativeData(inn: Innings): { over: number; total: number }[] {
+    let total = 0
+    const pts: { over: number; total: number }[] = [{ over: 0, total: 0 }]
+    inn.overs.forEach((o, i) => {
+      total += o.balls.reduce((s, b) => s + b.runsOffBat + b.extras, 0)
+      pts.push({ over: i + 1, total })
+    })
+    return pts
+  }
+
+  const d1 = inn1 ? cumulativeData(inn1) : []
+  const d2 = inn2 ? cumulativeData(inn2) : []
+  if (d1.length < 2 && d2.length < 2) return null
+
+  const target = inn2?.target ?? null
+  const maxY = Math.max(
+    d1.length > 0 ? Math.max(...d1.map((p) => p.total)) : 0,
+    d2.length > 0 ? Math.max(...d2.map((p) => p.total)) : 0,
+    target ?? 0,
+    10,
+  )
+
+  const w = 320; const h = 140
+  const padL = 28; const padR = 8; const padT = 10; const padB = 24
+  const chartW = w - padL - padR; const chartH = h - padT - padB
+  const bottom = padT + chartH
+
+  function px(over: number) { return padL + (over / Math.max(maxOvers, 1)) * chartW }
+  function py(runs: number) { return padT + chartH - (runs / maxY) * chartH }
+
+  function polylinePoints(data: { over: number; total: number }[]) {
+    return data.map((p) => `${px(p.over).toFixed(1)},${py(p.total).toFixed(1)}`).join(' ')
+  }
+
+  function areaPath(data: { over: number; total: number }[]) {
+    if (data.length < 2) return ''
+    const linePts = data.map((p) => `${px(p.over).toFixed(1)},${py(p.total).toFixed(1)}`).join(' L ')
+    return `M ${px(data[0].over).toFixed(1)},${bottom} L ${linePts} L ${px(data[data.length - 1].over).toFixed(1)},${bottom} Z`
+  }
+
+  const yTicks = [0, Math.round(maxY * 0.5), maxY].filter((v, i, arr) => arr.indexOf(v) === i)
+
+  return (
+    <div className="card mb-4">
+      <p className="text-sm font-semibold text-gray-300 mb-3">🐛 Score Worm</p>
+      <div className="flex flex-wrap gap-4 text-xs mb-3">
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded-sm bg-green-500/70" />
+          <span className="text-gray-400">{team1}</span>
+        </div>
+        {d2.length >= 2 && (
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-sm bg-blue-500/70" />
+            <span className="text-gray-400">{team2}</span>
+          </div>
+        )}
+        {target && (
+          <div className="flex items-center gap-1.5">
+            <div className="w-5 h-0.5 bg-orange-400 border-dashed" style={{ borderTop: '2px dashed #fb923c', background: 'none' }} />
+            <span className="text-gray-400">Target {target}</span>
+          </div>
+        )}
+      </div>
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ maxHeight: 160 }}>
+        {/* Y-axis grid */}
+        {yTicks.map((v) => {
+          const y = py(v)
+          return (
+            <g key={v}>
+              <line x1={padL} x2={w - padR} y1={y} y2={y} stroke="#374151" strokeWidth={0.5} strokeDasharray={v === 0 ? undefined : '3 3'} />
+              <text x={padL - 3} y={y + 3} textAnchor="end" fontSize={8} fill="#6b7280">{v}</text>
+            </g>
+          )
+        })}
+        {/* Area fills */}
+        {d1.length >= 2 && <path d={areaPath(d1)} fill="#22c55e" fillOpacity={0.08} />}
+        {d2.length >= 2 && <path d={areaPath(d2)} fill="#3b82f6" fillOpacity={0.08} />}
+        {/* Target line */}
+        {target && (
+          <line x1={padL} x2={w - padR} y1={py(target)} y2={py(target)} stroke="#fb923c" strokeWidth={1.5} strokeDasharray="5 3" />
+        )}
+        {/* Worms */}
+        {d1.length >= 2 && (
+          <polyline points={polylinePoints(d1)} fill="none" stroke="#22c55e" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+        )}
+        {d2.length >= 2 && (
+          <polyline points={polylinePoints(d2)} fill="none" stroke="#3b82f6" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+        )}
+        {/* Dots at over endpoints */}
+        {d1.slice(1).map((p, i) => <circle key={`d1-${i}`} cx={px(p.over)} cy={py(p.total)} r={2} fill="#22c55e" />)}
+        {d2.slice(1).map((p, i) => <circle key={`d2-${i}`} cx={px(p.over)} cy={py(p.total)} r={2} fill="#3b82f6" />)}
+        {/* X-axis labels */}
+        {Array.from({ length: maxOvers + 1 }, (_, i) => i)
+          .filter((n) => n === 0 || n % Math.max(1, Math.ceil(maxOvers / 8)) === 0 || n === maxOvers)
+          .map((n) => (
+            <text key={n} x={px(n)} y={h - 6} textAnchor="middle" fontSize={8} fill="#6b7280">{n}</text>
+          ))}
+        <text x={w / 2} y={h - 1} textAnchor="middle" fontSize={7} fill="#4b5563">Over</text>
+      </svg>
+    </div>
+  )
+}
+
 export default function Result() {
   const navigate = useNavigate()
   const { match, resetMatch, startSuperOver } = useMatchStore()
   const scorecardRef = useRef<HTMLDivElement>(null)
   const [sharing, setSharing] = useState(false)
+  const [graphTab, setGraphTab] = useState<'rr' | 'worm'>('rr')
+  const [copyDone, setCopyDone] = useState(false)
 
   useEffect(() => {
     if (match?.status === 'complete') saveMatch(match)
@@ -185,6 +298,25 @@ export default function Result() {
       console.error('Share failed', e)
     } finally {
       setSharing(false)
+    }
+  }
+
+  async function handleTextShare() {
+    const text = generateShareText(match!)
+    try {
+      if (navigator.share) {
+        await navigator.share({ text, title: `${match!.teams[0].name} vs ${match!.teams[1].name}` })
+        return
+      }
+    } catch {
+      // cancelled or unsupported — fall through to clipboard
+    }
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopyDone(true)
+      setTimeout(() => setCopyDone(false), 2500)
+    } catch {
+      // clipboard also unavailable — silently ignore
     }
   }
 
@@ -254,13 +386,39 @@ export default function Result() {
         </div>
       )}
 
-      {/* Run Rate Graph */}
-      <RunRateGraph
-        inn1={i1}
-        inn2={i2}
-        team1={match.teams[i1?.battingTeamIndex ?? 0].name}
-        team2={match.teams[i2?.battingTeamIndex ?? 1].name}
-      />
+      {/* Graph — tab toggle between Run Rate and Score Worm */}
+      <div className="mb-4">
+        <div className="flex gap-1 bg-gray-800 rounded-xl p-1 mb-0">
+          <button
+            onClick={() => setGraphTab('rr')}
+            className={`flex-1 py-1.5 rounded-lg text-sm font-semibold transition-colors ${graphTab === 'rr' ? 'bg-gray-600 text-white' : 'text-gray-400 hover:text-gray-300'}`}
+          >
+            📈 Run Rate
+          </button>
+          <button
+            onClick={() => setGraphTab('worm')}
+            className={`flex-1 py-1.5 rounded-lg text-sm font-semibold transition-colors ${graphTab === 'worm' ? 'bg-gray-600 text-white' : 'text-gray-400 hover:text-gray-300'}`}
+          >
+            🐛 Score Worm
+          </button>
+        </div>
+        {graphTab === 'rr' ? (
+          <RunRateGraph
+            inn1={i1}
+            inn2={i2}
+            team1={match.teams[i1?.battingTeamIndex ?? 0].name}
+            team2={match.teams[i2?.battingTeamIndex ?? 1].name}
+          />
+        ) : (
+          <ScoreWorm
+            inn1={i1}
+            inn2={i2}
+            team1={match.teams[i1?.battingTeamIndex ?? 0].name}
+            team2={match.teams[i2?.battingTeamIndex ?? 1].name}
+            maxOvers={match.maxOvers}
+          />
+        )}
+      </div>
 
       {/* Scorecards */}
       {[i1, i2].map((inn, innIdx) => {
@@ -345,7 +503,7 @@ export default function Result() {
         )
       })}
 
-      <div className="flex gap-3 mt-2">
+      <div className="flex gap-3 mt-2 flex-wrap">
         {isTied && !match.isSuperOver && (
           <button
             className="flex-1 bg-yellow-600 hover:bg-yellow-500 active:bg-yellow-700 text-white font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-colors"
@@ -354,6 +512,12 @@ export default function Result() {
             ⚡ Super Over
           </button>
         )}
+        <button
+          className="flex-1 bg-green-700 hover:bg-green-600 active:bg-green-800 text-white font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-colors"
+          onClick={handleTextShare}
+        >
+          {copyDone ? '✅ Copied!' : '💬 Share Text'}
+        </button>
         <button
           className="flex-1 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-colors"
           onClick={handleShare}
@@ -364,9 +528,9 @@ export default function Result() {
           ) : (
             <span>&#x1F4F2;</span>
           )}
-          {sharing ? 'Generating...' : 'Share Scorecard'}
+          {sharing ? 'Generating...' : 'Share Image'}
         </button>
-        <button className="flex-1 btn-primary" onClick={() => { resetMatch(); navigate('/') }}>
+        <button className="w-full btn-primary" onClick={() => { resetMatch(); navigate('/') }}>
           🏠 Homepage
         </button>
       </div>
