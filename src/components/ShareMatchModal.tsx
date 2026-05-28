@@ -40,8 +40,8 @@ export default function ShareMatchModal({ onClose }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const scorerUrl = `${window.location.origin}/social-cricket-scorer/join?code=${scorer}`
-  const spectatorUrl = `${window.location.origin}/social-cricket-scorer/join?code=${spectator}`
+  const scorerUrl = `${window.location.origin}/cricpad/join?code=${scorer}`
+  const spectatorUrl = `${window.location.origin}/cricpad/join?code=${spectator}`
 
   function copy(text: string, setFlag: (v: boolean) => void) {
     navigator.clipboard.writeText(text).then(() => {

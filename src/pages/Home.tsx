@@ -32,7 +32,7 @@ export default function Home() {
         </button>
         <div className="relative">
           <img
-            src="/social-cricket-scorer/icons/icon.svg"
+            src="/cricpad/icons/icon.svg"
             alt="CricPad icon"
             className="w-28 h-28 mx-auto mb-4 drop-shadow-xl rounded-3xl"
           />

@@ -28,7 +28,7 @@ function RouteTracker() {
 export default function App() {
   useTheme()
   return (
-    <BrowserRouter basename="/social-cricket-scorer">
+    <BrowserRouter basename="/cricpad">
       <SyncManager />
       <RouteTracker />
       <div className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-white font-sans">
