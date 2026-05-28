@@ -423,5 +423,5 @@ export async function fetchLeaderboard(since?: string): Promise<LeaderboardEntry
       totalWickets: s.totalWickets,
       matches: s.matchIds.size,
     }))
-    .sort((a, b) => (b.mvpWins !== a.mvpWins ? b.mvpWins - a.mvpWins : b.totalMvpPoints - a.totalMvpPoints))
+    .sort((a, b) => (b.totalMvpPoints !== a.totalMvpPoints ? b.totalMvpPoints - a.totalMvpPoints : b.mvpWins - a.mvpWins))
 }

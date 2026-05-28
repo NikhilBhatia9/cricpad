@@ -64,6 +64,7 @@ export default function Players() {
 
   // Leaderboard state
   const [leaderboardPeriod, setLeaderboardPeriod] = useState<LeaderboardPeriod>('all')
+  const [leaderboardSort, setLeaderboardSort] = useState<'points' | 'mvps'>('points')
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
   const [potmData, setPotmData] = useState<LeaderboardEntry | null>(null)
   const [leaderboardLoading, setLeaderboardLoading] = useState(false)
@@ -309,8 +310,29 @@ export default function Players() {
           ) : leaderboard.length === 0 ? (
             <div className="text-center py-12 text-gray-500">No data for this period yet.</div>
           ) : (
+            <>
+              {/* Sort toggle */}
+              <div className="flex gap-1 mb-3">
+                <button
+                  onClick={() => setLeaderboardSort('points')}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${leaderboardSort === 'points' ? 'bg-purple-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}
+                >
+                  🟣 Sort by Points
+                </button>
+                <button
+                  onClick={() => setLeaderboardSort('mvps')}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${leaderboardSort === 'mvps' ? 'bg-yellow-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}
+                >
+                  ⭐ Sort by MVP Wins
+                </button>
+              </div>
             <div className="space-y-2">
-              {leaderboard.map((entry, index) => {
+              {[...leaderboard]
+                .sort((a, b) => leaderboardSort === 'mvps'
+                  ? (b.mvpWins !== a.mvpWins ? b.mvpWins - a.mvpWins : b.totalMvpPoints - a.totalMvpPoints)
+                  : (b.totalMvpPoints !== a.totalMvpPoints ? b.totalMvpPoints - a.totalMvpPoints : b.mvpWins - a.mvpWins)
+                )
+                .map((entry, index) => {
                 const medals = ['🥇', '🥈', '🥉']
                 const medal = medals[index]
                 return (
@@ -344,6 +366,7 @@ export default function Players() {
                 )
               })}
             </div>
+            </>
           )}
         </div>
       )}
