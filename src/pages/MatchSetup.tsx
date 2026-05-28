@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { v4 as uuidv4 } from 'uuid'
 import { useMatchStore } from '../store/matchStore'
 import type { Team, Player } from '../types/cricket'
-import { fetchAllPlayers, fetchPlayerStats, fetchMatchResultsMap } from '../db/operations'
+import { fetchAllPlayers, fetchPlayerStats, fetchMatchResultsMap, ensurePlayerExists } from '../db/operations'
 import type { PlayerMatchStat } from '../db/types'
 import BackButton from '../components/BackButton'
 import { getSavedTeams } from '../utils/savedTeams'
@@ -85,6 +85,7 @@ export default function MatchSetup() {
     if (!name) return
     if (!pool.includes(name)) setPool((prev) => [name, ...prev])
     setNewName('')
+    ensurePlayerExists(name).catch(() => {})
   }
 
   function loadSavedTeam(team: SavedTeam, slot: 'A' | 'B') {

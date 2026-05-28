@@ -105,10 +105,11 @@ export default function Scoring() {
     const prev = prevInningsRef.current
     if (prev && innings !== prev) {
       let milestoneSet = false
-      // Batting milestones
-      if (innings.strikerId) {
-        const curr = innings.batsmen[innings.strikerId]
-        const prevBat = (prev.batsmen as Record<string, typeof curr | undefined>)[innings.strikerId]
+      // Batting milestones — check both striker and non-striker because odd runs swap them
+      const batsmanIds = [innings.strikerId, innings.nonStrikerId].filter(Boolean) as string[]
+      for (const id of batsmanIds) {
+        const curr = innings.batsmen[id]
+        const prevBat = (prev.batsmen as Record<string, typeof curr | undefined>)[id]
         if (curr && prevBat && !curr.isOut) {
           const p = prevBat.runs
           const c = curr.runs
@@ -123,6 +124,7 @@ export default function Scoring() {
             milestoneSet = true
           }
         }
+        if (milestoneSet) break
       }
       // Bowling milestones
       if (!milestoneSet && innings.bowlerId) {

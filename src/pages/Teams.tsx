@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { v4 as uuidv4 } from 'uuid'
 import { getSavedTeams, upsertTeam, deleteTeam } from '../utils/savedTeams'
 import type { SavedTeam } from '../utils/savedTeams'
-import { fetchAllPlayers } from '../db/operations'
+import { fetchAllPlayers, ensurePlayerExists } from '../db/operations'
 import BackButton from '../components/BackButton'
 
 export default function Teams() {
@@ -100,6 +100,7 @@ export default function Teams() {
     if (!pool.includes(n)) setPool([...pool, n])
     if (!selected.includes(n)) setSelected([...selected, n])
     setCustomPlayerName('')
+    ensurePlayerExists(n).catch(() => {})
   }
 
   // ── Edit team overlay ──────────────────────────────────────────────────────

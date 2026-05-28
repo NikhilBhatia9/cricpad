@@ -272,6 +272,19 @@ export async function saveMatch(match: Match): Promise<void> {
   }
 }
 
+export async function ensurePlayerExists(name: string): Promise<void> {
+  const existing = await fetchPlayer(name)
+  if (!existing) {
+    const now = new Date().toISOString()
+    await supabase.from('players').insert({
+      name,
+      first_seen_at: now,
+      last_seen_at: now,
+      total_matches: 0,
+    })
+  }
+}
+
 export async function renamePlayer(oldName: string, newName: string): Promise<{ error: string | null }> {
   const trimmed = newName.trim()
   if (!trimmed) return { error: 'Name cannot be empty' }
