@@ -146,7 +146,7 @@ export default function MatchSetup() {
             {savedTeams.map((team) => (
               <button
                 key={team.id}
-                className="w-full card text-left hover:bg-gray-700/50 transition-colors"
+                className="w-full card text-left hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
                 onClick={() => loadSavedTeam(team, loadTeamSlot)}
               >
                 <div className="flex items-center gap-3">
@@ -188,7 +188,7 @@ export default function MatchSetup() {
               key={o}
               onClick={() => setOvers(o)}
               className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${
-                overs === o ? 'bg-green-600' : 'bg-gray-700 hover:bg-gray-600'
+                overs === o ? 'bg-green-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white'
               }`}
             >
               {o}
@@ -261,7 +261,7 @@ export default function MatchSetup() {
             onKeyDown={(e) => e.key === 'Enter' && addNew()}
           />
           <button
-            className="bg-gray-600 hover:bg-gray-500 px-4 rounded-lg font-semibold text-sm transition-colors"
+            className="bg-gray-200 hover:bg-gray-300 text-gray-800 dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-white px-4 rounded-lg font-semibold text-sm transition-colors"
             onClick={addNew}
           >
             Add
@@ -277,7 +277,7 @@ export default function MatchSetup() {
         </div>
       ) : (
         <div className="card mb-6">
-          <h2 className="text-sm font-semibold text-gray-300 mb-1">Assign Players to Teams</h2>
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Assign Players to Teams</h2>
           <p className="text-xs text-gray-500 mb-3">Tap a team button to assign. Tap again to remove.</p>
 
           {/* Unassigned */}
@@ -405,7 +405,7 @@ function PlayerRow({
 
   return (
     <div className={`flex items-center gap-2 rounded-lg px-3 py-2 ${
-      assigned === 'both' ? 'bg-yellow-900/30 border border-yellow-700/40' : 'bg-gray-800'
+      assigned === 'both' ? 'bg-yellow-50 border border-yellow-300 dark:bg-yellow-900/30 dark:border-yellow-700/40' : 'bg-gray-100 dark:bg-gray-800'
     }`}>
       <span className="flex-1 text-sm font-medium truncate flex items-center gap-1.5">
         {name}
@@ -426,7 +426,7 @@ function PlayerRow({
       <button
         onClick={() => onToggle(name, 'A')}
         className={`px-3 py-1 rounded-md text-xs font-bold transition-colors ${
-          inA ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+          inA ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600'
         }`}
       >
         {teamALabel.length > 8 ? teamALabel.slice(0, 7) + '...' : teamALabel}
@@ -434,7 +434,7 @@ function PlayerRow({
       <button
         onClick={() => onToggle(name, 'B')}
         className={`px-3 py-1 rounded-md text-xs font-bold transition-colors ${
-          inB ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+          inB ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600'
         }`}
       >
         {teamBLabel.length > 8 ? teamBLabel.slice(0, 7) + '...' : teamBLabel}

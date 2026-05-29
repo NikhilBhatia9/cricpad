@@ -231,7 +231,7 @@ export default function Players() {
             <>
               {players && players.length >= 2 && (
                 <button
-                  className="bg-blue-700 hover:bg-blue-600 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5"
+                  className="bg-blue-700 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5"
                   onClick={() => { setCompareMode(true); setCompareA(null) }}
                 >
                   ⚖️ Compare
@@ -250,7 +250,7 @@ export default function Players() {
           )}
           {activeTab === 'players' && compareMode && (
             <button
-              className="bg-gray-600 hover:bg-gray-500 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors"
+              className="bg-gray-200 hover:bg-gray-300 text-gray-800 dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors"
               onClick={() => { setCompareMode(false); setCompareA(null) }}
             >
               ✕ Cancel
@@ -260,15 +260,15 @@ export default function Players() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-800 rounded-xl p-1 mb-4">
+      <div className="flex gap-1 bg-gray-200 dark:bg-gray-800 rounded-xl p-1 mb-4">
         <button
-          className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${activeTab === 'players' ? 'bg-gray-700 text-white shadow' : 'text-gray-400 hover:text-white'}`}
+          className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${activeTab === 'players' ? 'bg-white text-gray-900 shadow dark:bg-gray-700 dark:text-white' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'}`}
           onClick={() => setActiveTab('players')}
         >
           👥 Players
         </button>
         <button
-          className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${activeTab === 'leaderboard' ? 'bg-gray-700 text-white shadow' : 'text-gray-400 hover:text-white'}`}
+          className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${activeTab === 'leaderboard' ? 'bg-white text-gray-900 shadow dark:bg-gray-700 dark:text-white' : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'}`}
           onClick={() => setActiveTab('leaderboard')}
         >
           🏆 Leaderboard
@@ -285,7 +285,7 @@ export default function Players() {
                 key={key}
                 onClick={() => setLeaderboardPeriod(key)}
                 className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                  leaderboardPeriod === key ? 'bg-yellow-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
+                  leaderboardPeriod === key ? 'bg-yellow-600 text-white' : 'bg-gray-200 text-gray-600 hover:text-gray-900 dark:bg-gray-800 dark:text-gray-400 dark:hover:text-white'
                 }`}
               >
                 {label}
@@ -356,13 +356,13 @@ export default function Players() {
               <div className="flex gap-1 mb-3">
                 <button
                   onClick={() => setLeaderboardSort('points')}
-                  className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${leaderboardSort === 'points' ? 'bg-purple-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${leaderboardSort === 'points' ? 'bg-purple-700 text-white' : 'bg-gray-200 text-gray-600 hover:text-gray-900 dark:bg-gray-800 dark:text-gray-400 dark:hover:text-white'}`}
                 >
                   🟣 Sort by Points
                 </button>
                 <button
                   onClick={() => setLeaderboardSort('mvps')}
-                  className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${leaderboardSort === 'mvps' ? 'bg-yellow-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'}`}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${leaderboardSort === 'mvps' ? 'bg-yellow-600 text-white' : 'bg-gray-200 text-gray-600 hover:text-gray-900 dark:bg-gray-800 dark:text-gray-400 dark:hover:text-white'}`}
                 >
                   ⭐ Sort by MVP Wins
                 </button>
@@ -393,12 +393,12 @@ export default function Players() {
                         </p>
                       </div>
                       <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                        <div className="text-center bg-yellow-900/40 border border-yellow-700/40 rounded-xl px-3 py-1 min-w-[60px]">
-                          <p className="text-base font-bold text-yellow-400">{entry.mvpWins}</p>
+                        <div className="text-center bg-yellow-50 border border-yellow-300 dark:bg-yellow-900/40 dark:border-yellow-700/40 rounded-xl px-3 py-1 min-w-[60px]">
+                          <p className="text-base font-bold text-yellow-600 dark:text-yellow-400">{entry.mvpWins}</p>
                           <p className="text-xs text-gray-500">MVP{entry.mvpWins !== 1 ? 's' : ''}</p>
                         </div>
-                        <div className="text-center bg-purple-900/40 border border-purple-700/40 rounded-xl px-3 py-1 min-w-[60px]">
-                          <p className="text-base font-bold text-purple-300">{entry.totalMvpPoints}</p>
+                        <div className="text-center bg-purple-50 border border-purple-300 dark:bg-purple-900/40 dark:border-purple-700/40 rounded-xl px-3 py-1 min-w-[60px]">
+                          <p className="text-base font-bold text-purple-700 dark:text-purple-300">{entry.totalMvpPoints}</p>
                           <p className="text-xs text-gray-500">pts</p>
                         </div>
                       </div>
@@ -417,8 +417,8 @@ export default function Players() {
         <>
           {/* Compare mode banner */}
           {compareMode && (
-            <div className="card mb-4 bg-blue-900/40 border border-blue-700/50">
-              <p className="text-sm font-semibold text-blue-300">
+            <div className="card mb-4 bg-blue-50 border border-blue-300 dark:bg-blue-900/40 dark:border-blue-700/50">
+              <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">
                 {compareA === null
                   ? '👆 Tap a player to compare'
                   : `✅ ${compareA} selected — tap a second player`}
@@ -428,7 +428,7 @@ export default function Players() {
 
           {showAdd && (
             <div className="card mb-4">
-              <h2 className="text-sm font-semibold text-gray-300 mb-3">New Player</h2>
+              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">New Player</h2>
               <div className="flex gap-2">
                 <input
                   autoFocus
@@ -439,7 +439,7 @@ export default function Players() {
                   onKeyDown={(e) => e.key === 'Enter' && addPlayer()}
                 />
                 <button
-                  className="bg-green-600 hover:bg-green-500 px-4 rounded-lg font-semibold text-sm transition-colors"
+                  className="bg-green-600 hover:bg-green-500 text-white px-4 rounded-lg font-semibold text-sm transition-colors"
                   onClick={addPlayer}
                 >
                   Save
@@ -478,7 +478,7 @@ export default function Players() {
                 <select
                   value={sortKey}
                   onChange={(e) => setSortKey(e.target.value as SortKey)}
-                  className="w-full appearance-none bg-gray-700 border border-gray-600 text-white text-sm font-semibold rounded-xl px-4 py-2.5 pr-9 focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer"
+                  className="w-full appearance-none bg-gray-100 border border-gray-300 text-gray-900 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm font-semibold rounded-xl px-4 py-2.5 pr-9 focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer"
                 >
                   {SORT_OPTIONS.map(({ key, label, icon }) => (
                     <option key={key} value={key}>{icon} {label}</option>

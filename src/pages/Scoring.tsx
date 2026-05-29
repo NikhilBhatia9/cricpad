@@ -47,16 +47,16 @@ function OverSummary({ over, bowlerName, onContinue }: { over: Over; bowlerName:
 
         {/* Stats row */}
         <div className="grid grid-cols-3 gap-3 mb-6">
-          <div className="bg-gray-800 rounded-xl py-3">
-            <p className="text-2xl font-bold text-white">{runsInOver}</p>
+          <div className="bg-gray-100 dark:bg-gray-800 rounded-xl py-3">
+            <p className="text-2xl font-bold">{runsInOver}</p>
             <p className="text-xs text-gray-500">Runs</p>
           </div>
-          <div className="bg-gray-800 rounded-xl py-3">
-            <p className="text-2xl font-bold text-red-400">{wicketsInOver}</p>
+          <div className="bg-gray-100 dark:bg-gray-800 rounded-xl py-3">
+            <p className="text-2xl font-bold text-red-500 dark:text-red-400">{wicketsInOver}</p>
             <p className="text-xs text-gray-500">Wickets</p>
           </div>
-          <div className="bg-gray-800 rounded-xl py-3">
-            <p className="text-2xl font-bold text-yellow-400">{legalBalls > 0 ? ((runsInOver / legalBalls) * 6).toFixed(1) : '0.0'}</p>
+          <div className="bg-gray-100 dark:bg-gray-800 rounded-xl py-3">
+            <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{legalBalls > 0 ? ((runsInOver / legalBalls) * 6).toFixed(1) : '0.0'}</p>
             <p className="text-xs text-gray-500">Economy</p>
           </div>
         </div>
@@ -401,18 +401,18 @@ export default function Scoring() {
         <div className="space-y-3 mb-4">
           <button
             onClick={() => { setRunOutNonStriker(false); setShowRunOutVictim(false); setShowRunOutRuns(true) }}
-            className="w-full bg-gray-700 hover:bg-gray-600 text-white font-semibold py-5 rounded-2xl text-lg transition-colors"
+            className="w-full bg-gray-200 hover:bg-gray-300 text-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white font-semibold py-5 rounded-2xl text-lg transition-colors"
           >
             &#x26A1; {striker?.name ?? 'Striker'}
-            <span className="block text-xs text-gray-400 font-normal mt-1">on strike</span>
+            <span className="block text-xs text-gray-500 dark:text-gray-400 font-normal mt-1">on strike</span>
           </button>
           {nonStriker && (
             <button
               onClick={() => { setRunOutNonStriker(true); setShowRunOutVictim(false); setShowRunOutRuns(true) }}
-              className="w-full bg-gray-700 hover:bg-gray-600 text-white font-semibold py-5 rounded-2xl text-lg transition-colors"
+              className="w-full bg-gray-200 hover:bg-gray-300 text-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white font-semibold py-5 rounded-2xl text-lg transition-colors"
             >
               &#x26A1; {nonStriker.name}
-              <span className="block text-xs text-gray-400 font-normal mt-1">non-striker</span>
+              <span className="block text-xs text-gray-500 dark:text-gray-400 font-normal mt-1">non-striker</span>
             </button>
           )}
         </div>
@@ -434,7 +434,7 @@ export default function Scoring() {
             <button
               key={r}
               onClick={() => { setRunOutRuns(r); setShowRunOutRuns(false); setShowFielderSelect(true) }}
-              className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-6 rounded-2xl text-2xl transition-colors"
+              className="bg-gray-200 hover:bg-gray-300 text-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white font-bold py-6 rounded-2xl text-2xl transition-colors"
             >
               {r}
             </button>
@@ -462,7 +462,7 @@ export default function Scoring() {
             <button
               key={p.id}
               onClick={() => commitWicket(pendingWicketType!, p.id, p.name)}
-              className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-4 rounded-2xl text-lg transition-colors"
+              className="bg-gray-200 hover:bg-gray-300 text-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white font-semibold py-4 rounded-2xl text-lg transition-colors"
             >
               {fielderIcon} {p.name}
             </button>
@@ -568,7 +568,7 @@ export default function Scoring() {
     <div className="flex flex-col min-h-screen max-w-lg mx-auto">
       {/* Sticky mini score bar — appears when main header scrolls off screen */}
       {stickyVisible && (
-        <div className="fixed top-0 left-0 right-0 z-50 bg-gray-900/95 backdrop-blur border-b border-gray-700 px-4 py-2 flex items-center justify-between max-w-lg mx-auto">
+        <div className="fixed top-0 left-0 right-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur border-b border-gray-200 dark:border-gray-700 px-4 py-2 flex items-center justify-between max-w-lg mx-auto">
           <div>
             <p className="text-xs text-gray-400">{battingTeam.name}</p>
             <p className="text-lg font-bold leading-tight">
@@ -590,7 +590,7 @@ export default function Scoring() {
         </div>
       )}
       {/* Score header */}
-      <div ref={scoreHeaderRef} className="bg-gray-800 px-4 py-4">
+      <div ref={scoreHeaderRef} className="bg-gray-100 dark:bg-gray-800 px-4 py-4">
         {match.isSuperOver && (
           <div className="bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 text-xs font-bold px-3 py-1.5 rounded-lg mb-2 text-center tracking-wide">
             ⚡ SUPER OVER
@@ -610,7 +610,7 @@ export default function Scoring() {
               <span className="bg-blue-900/50 border border-blue-700/50 text-blue-300 text-xs font-semibold px-2.5 py-1 rounded-lg">👁 Spectator</span>
             ) : (
               <button
-                className="bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                className="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors"
                 onClick={() => setShowShare(true)}
               >
                 Share
@@ -646,7 +646,7 @@ export default function Scoring() {
             <div key={`b${i}`} className={`ball-dot ${ballColorClass(b)}`}>{b}</div>
           ))}
           {Array.from({ length: Math.max(0, 6 - (innings.totalLegalBalls % 6 === 0 && innings.totalLegalBalls > 0 ? 6 : innings.totalLegalBalls % 6)) }).map((_, i) => (
-            <div key={`e${i}`} className="ball-dot bg-gray-700/40 border border-gray-600 border-dashed text-gray-600">·</div>
+            <div key={`e${i}`} className="ball-dot bg-gray-200/80 border border-gray-400 border-dashed text-gray-400 dark:bg-gray-700/40 dark:border-gray-600 dark:text-gray-600">·</div>
           ))}
           {overBalls.length === 0 && (
             <p className="text-xs text-gray-500 ml-1">Over {overNum} — new over</p>
@@ -663,7 +663,7 @@ export default function Scoring() {
       </div>
 
       {/* Current players */}
-      <div className="px-4 py-3 border-b border-gray-700">
+      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
         {/* Free Hit indicator */}
         {innings.isFreeHit && (
           <div className="bg-green-500/20 border border-green-500/50 text-green-300 font-bold text-sm px-3 py-2 rounded-xl mb-2 text-center tracking-wide animate-pulse">
@@ -672,7 +672,7 @@ export default function Scoring() {
         )}
         <div className="flex gap-2 text-sm mb-2">
           {[striker, nonStriker].map((b, i) => b && (
-            <div key={i} className={`flex-1 bg-gray-800 rounded-xl px-3 py-2 ${i === 0 ? 'border border-green-600' : ''}`}>
+            <div key={i} className={`flex-1 bg-gray-100 dark:bg-gray-800 rounded-xl px-3 py-2 ${i === 0 ? 'border border-green-600' : ''}`}>
               <p className="font-semibold truncate">{b.name} {i === 0 ? '\u26a1' : ''}</p>
               <p className="text-gray-400">{b.runs}<span className="text-xs"> ({b.balls})</span></p>
             </div>
@@ -681,16 +681,16 @@ export default function Scoring() {
         {/* Partnership */}
         {striker && nonStriker && (
           <div className="flex items-center justify-center gap-1.5 mb-2 py-1">
-            <div className="h-px flex-1 bg-gray-700" />
+            <div className="h-px flex-1 bg-gray-300 dark:bg-gray-700" />
             <p className="text-xs text-gray-400 font-medium">
-              Partnership: <span className="text-white font-bold">{partnershipRuns}</span>
+              Partnership: <span className="font-bold">{partnershipRuns}</span>
               <span className="text-gray-500"> ({partnershipBalls}b)</span>
             </p>
-            <div className="h-px flex-1 bg-gray-700" />
+            <div className="h-px flex-1 bg-gray-300 dark:bg-gray-700" />
           </div>
         )}
         {bowler && (
-          <div className="bg-gray-800 rounded-xl px-3 py-2 text-sm">
+          <div className="bg-gray-100 dark:bg-gray-800 rounded-xl px-3 py-2 text-sm">
             <p className="text-gray-400 text-xs">Bowling</p>
             <p className="font-semibold">
               {bowler.name}
@@ -708,12 +708,12 @@ export default function Scoring() {
       {/* Extra toggle + run buttons + undo — hidden for spectators */}
       {isSpectator ? (
         <div className="px-4 pt-4 pb-6">
-          <div className="bg-blue-900/30 border border-blue-700/50 rounded-2xl px-5 py-6 text-center">
+          <div className="bg-blue-50 border border-blue-200 dark:bg-blue-900/30 dark:border-blue-700/50 rounded-2xl px-5 py-6 text-center">
             <p className="text-2xl mb-2">👁</p>
-            <p className="text-blue-300 font-semibold text-base mb-1">Watching Live</p>
-            <p className="text-gray-400 text-sm">You joined as a spectator. Scoring controls are available to scorers only.</p>
+            <p className="text-blue-700 dark:text-blue-300 font-semibold text-base mb-1">Watching Live</p>
+            <p className="text-gray-600 dark:text-gray-400 text-sm">You joined as a spectator. Scoring controls are available to scorers only.</p>
           </div>
-          <button onClick={() => navigate('/')} className="mt-4 w-full bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-xl text-sm font-semibold">
+          <button onClick={() => navigate('/')} className="mt-4 w-full bg-gray-200 hover:bg-gray-300 text-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white py-3 rounded-xl text-sm font-semibold">
             🏠 Menu
           </button>
         </div>
@@ -744,7 +744,7 @@ export default function Scoring() {
                     }
                   }}
                   className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${
-                    pendingExtra === e ? 'bg-yellow-400 text-black ring-2 ring-yellow-300' : 'bg-gray-700 text-gray-300'
+                    pendingExtra === e ? 'bg-yellow-400 text-black ring-2 ring-yellow-300' : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
                   }`}
                 >
                   {EXTRA_LABELS[e]}
@@ -764,7 +764,7 @@ export default function Scoring() {
                 <button
                   key={r}
                   onClick={() => recordRuns(r)}
-                  className="bg-gray-700 hover:bg-gray-600 active:bg-gray-900 text-white text-2xl font-bold py-5 rounded-2xl transition-colors"
+                  className="bg-gray-200 hover:bg-gray-300 active:bg-gray-400 text-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600 dark:active:bg-gray-900 dark:text-white text-2xl font-bold py-5 rounded-2xl transition-colors"
                 >
                   {r}
                 </button>
@@ -789,13 +789,13 @@ export default function Scoring() {
               disabled={undoHistory.length === 0}
               className={`flex-1 py-3 rounded-xl text-sm font-semibold transition-colors ${
                 undoHistory.length > 0
-                  ? 'bg-gray-700 hover:bg-gray-600 text-white'
-                  : 'bg-gray-800 text-gray-600 cursor-not-allowed'
+                  ? 'bg-gray-200 hover:bg-gray-300 text-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white'
+                  : 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-600 cursor-not-allowed'
               }`}
             >
               &#x21A9; Undo{undoHistory.length > 0 ? ` (${undoHistory.length})` : ''}
             </button>
-            <button onClick={() => navigate('/')} className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-xl text-sm font-semibold">
+            <button onClick={() => navigate('/')} className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white py-3 rounded-xl text-sm font-semibold">
               &#x1F3E0; Menu
             </button>
           </div>

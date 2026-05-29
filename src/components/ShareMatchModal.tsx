@@ -73,8 +73,8 @@ export default function ShareMatchModal({ onClose }: Props) {
         {/* Scorer code */}
         <div className="mb-4">
           <p className="text-xs font-semibold text-green-400 uppercase tracking-widest mb-2">🎯 Scorer Code — can record balls</p>
-          <div className="bg-gray-800 rounded-2xl p-4 text-center mb-2">
-            <p className="text-4xl font-bold tracking-[0.3em] text-green-400 font-mono">{scorer}</p>
+          <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl p-4 text-center mb-2">
+            <p className="text-4xl font-bold tracking-[0.3em] text-green-600 dark:text-green-400 font-mono">{scorer}</p>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <button
@@ -89,13 +89,13 @@ export default function ShareMatchModal({ onClose }: Props) {
           </div>
         </div>
 
-        <div className="h-px bg-gray-700 mb-4" />
+        <div className="h-px bg-gray-200 dark:bg-gray-700 mb-4" />
 
         {/* Spectator code */}
         <div>
           <p className="text-xs font-semibold text-blue-400 uppercase tracking-widest mb-2">👁 Spectator Code — view only</p>
-          <div className="bg-gray-800 rounded-2xl p-4 text-center mb-2">
-            <p className="text-4xl font-bold tracking-[0.3em] text-blue-400 font-mono">{spectator}</p>
+          <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl p-4 text-center mb-2">
+            <p className="text-4xl font-bold tracking-[0.3em] text-blue-600 dark:text-blue-400 font-mono">{spectator}</p>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <button
@@ -110,7 +110,7 @@ export default function ShareMatchModal({ onClose }: Props) {
           </div>
         </div>
 
-        <p className="text-xs text-gray-600 text-center mt-4">
+        <p className="text-xs text-gray-500 dark:text-gray-600 text-center mt-4">
           Tell others to tap "Join Match" on the home screen
         </p>
       </div>

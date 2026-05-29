@@ -106,7 +106,7 @@ export default function MatchHistory() {
             key={key}
             onClick={() => setPeriod(key)}
             className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-              period === key ? 'bg-green-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
+              period === key ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-600 hover:text-gray-900 dark:bg-gray-800 dark:text-gray-400 dark:hover:text-white'
             }`}
           >
             {label}
@@ -133,7 +133,7 @@ export default function MatchHistory() {
                 {items.map((m) => (
                   <button
                     key={m.id}
-                    className="card w-full text-left hover:bg-gray-700/80 transition-colors active:scale-[0.99]"
+                    className="card w-full text-left hover:bg-gray-100 dark:hover:bg-gray-700/80 transition-colors active:scale-[0.99]"
                     onClick={() => navigate(`/history/${m.id}`)}
                   >
                     <div className="flex justify-between items-start">
@@ -256,7 +256,7 @@ function MatchDetail({ matchId, onBack }: { matchId: string; onBack: () => void 
 
             <table className="w-full text-sm mb-3">
               <thead>
-                <tr className="text-gray-500 text-xs border-b border-gray-700">
+                <tr className="text-gray-500 text-xs border-b border-gray-200 dark:border-gray-700">
                   <th className="text-left pb-1.5">Batter</th>
                   <th className="text-right pb-1.5">R</th>
                   <th className="text-right pb-1.5">B</th>
@@ -267,7 +267,7 @@ function MatchDetail({ matchId, onBack }: { matchId: string; onBack: () => void 
               </thead>
               <tbody>
                 {batsmen.map((b) => (
-                  <tr key={b.playerId} className="border-b border-gray-700/40">
+                  <tr key={b.playerId} className="border-b border-gray-100 dark:border-gray-700/40">
                     <td className="py-1.5">
                       <button className="font-medium text-left hover:text-green-400" onClick={() => navigate(`/players/${encodeURIComponent(b.name)}`)}>{b.name}</button>
                       <p className="text-xs text-gray-500">{dismissalText(b)}</p>
@@ -285,7 +285,7 @@ function MatchDetail({ matchId, onBack }: { matchId: string; onBack: () => void 
             <h3 className="text-xs text-gray-500 font-semibold mb-2 mt-3">BOWLING</h3>
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-gray-500 text-xs border-b border-gray-700">
+                <tr className="text-gray-500 text-xs border-b border-gray-200 dark:border-gray-700">
                   <th className="text-left pb-1.5">Bowler</th>
                   <th className="text-right pb-1.5">O</th>
                   <th className="text-right pb-1.5">R</th>
@@ -295,7 +295,7 @@ function MatchDetail({ matchId, onBack }: { matchId: string; onBack: () => void 
               </thead>
               <tbody>
                 {bowlers.map((b) => (
-                  <tr key={b.playerId} className="border-b border-gray-700/40">
+                  <tr key={b.playerId} className="border-b border-gray-100 dark:border-gray-700/40">
                     <td className="py-1.5">
                       <button className="font-medium text-left hover:text-green-400" onClick={() => navigate(`/players/${encodeURIComponent(b.name)}`)}>{b.name}</button>
                     </td>

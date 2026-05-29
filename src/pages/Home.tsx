@@ -43,7 +43,7 @@ export default function Home() {
 
       {/* Supabase not configured warning */}
       {!isSupabaseConfigured && (
-        <div className="mx-5 mt-4 bg-yellow-900/40 border border-yellow-700/60 rounded-xl px-4 py-3 text-sm text-yellow-300 text-center">
+        <div className="mx-5 mt-4 bg-yellow-50 border border-yellow-400 dark:bg-yellow-900/40 dark:border-yellow-700/60 rounded-xl px-4 py-3 text-sm text-yellow-800 dark:text-yellow-300 text-center">
           ⚠️ Database not connected — add <strong>VITE_SUPABASE_URL</strong> &amp; <strong>VITE_SUPABASE_ANON_KEY</strong> as GitHub secrets to enable player &amp; match history.
         </div>
       )}
@@ -53,9 +53,9 @@ export default function Home() {
 
         {/* Active match banner */}
         {hasActiveMatch && (
-          <div className="bg-green-900/25 border border-green-700/40 rounded-2xl px-4 py-3.5 mb-1">
+          <div className="bg-green-50 border border-green-300 dark:bg-green-900/25 dark:border-green-700/40 rounded-2xl px-4 py-3.5 mb-1">
             <div className="flex items-center justify-between mb-1">
-              <span className="flex items-center gap-1.5 text-xs font-bold text-green-400 uppercase tracking-wider">
+              <span className="flex items-center gap-1.5 text-xs font-bold text-green-600 dark:text-green-400 uppercase tracking-wider">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
                 Live
               </span>
