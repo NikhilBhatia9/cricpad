@@ -512,6 +512,7 @@ export default function Players() {
               const bat = computeCareerBatting(stats)
               const bowl = computeCareerBowling(stats)
               const rec = computeCareerRecord(stats, matchResults)
+              const statsMatchCount = new Set(stats.map((s) => s.matchId)).size
 
               // Last 5 match form dots
               const uniqueMatchIds = [...new Set(
@@ -531,7 +532,7 @@ export default function Players() {
               let statLabel = ''
               let statValue: string | number = ''
               switch (sortKey) {
-                case 'matches':  statLabel = 'Matches';  statValue = player.totalMatches; break
+                case 'matches':  statLabel = 'Matches';  statValue = statsMatchCount; break
                 case 'wins':     statLabel = 'Wins';     statValue = rec.wins; break
                 case 'losses':   statLabel = 'Losses';   statValue = rec.losses; break
                 case 'runs':     statLabel = 'Runs';     statValue = bat.totalRuns; break
@@ -616,7 +617,7 @@ export default function Players() {
                               </button>
                             )}
                           </div>
-                          <p className="text-xs text-gray-500">{player.totalMatches} match{player.totalMatches !== 1 ? 'es' : ''} &middot; {rec.wins}W {rec.losses}L</p>
+                          <p className="text-xs text-gray-500">{statsMatchCount} match{statsMatchCount !== 1 ? 'es' : ''} &middot; {rec.wins}W {rec.losses}L</p>
                           {/* Form dots — last 5 results */}
                           {formDots.length > 0 && (
                             <div className="flex gap-1 mt-1">

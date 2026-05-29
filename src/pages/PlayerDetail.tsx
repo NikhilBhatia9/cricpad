@@ -153,7 +153,9 @@ export default function PlayerDetail() {
             <div className="bg-blue-500/20 border border-blue-500/40 rounded-xl px-4 py-2 min-w-[60px]">
               <p className="text-xs text-blue-400 font-semibold">WIN%</p>
               <p className="text-2xl font-bold text-blue-400">
-                {matchIds.length > 0 ? Math.round((record.wins / matchIds.length) * 100) : 0}
+                {(record.wins + record.losses + record.ties) > 0
+                ? Math.round((record.wins / (record.wins + record.losses + record.ties)) * 100)
+                : 0}
               </p>
             </div>
           </div>

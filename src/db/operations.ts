@@ -182,26 +182,7 @@ export async function saveMatch(match: Match): Promise<void> {
     snapshot: JSON.stringify(match),
   })
 
-  // Upsert all players — deduplicate shared players
-  const uniqueNames = [...new Set([...match.teams[0].players, ...match.teams[1].players].map((p) => p.name))]
-  for (const name of uniqueNames) {
-    const existing = await fetchPlayer(name)
-    if (existing) {
-      await supabase
-        .from('players')
-        .update({ last_seen_at: completedAt, total_matches: existing.totalMatches + 1 })
-        .eq('name', name)
-    } else {
-      await supabase.from('players').insert({
-        name,
-        first_seen_at: completedAt,
-        last_seen_at: completedAt,
-        total_matches: 1,
-      })
-    }
-  }
-
-  // Build per-player stats
+  // Build per-player stats FIRST so we know who actually played
   const statsToAdd: Record<string, unknown>[] = []
 
   // Compute MVP
@@ -214,7 +195,7 @@ export async function saveMatch(match: Match): Promise<void> {
     const fieldingTeamIndex: 0 | 1 = innings.battingTeamIndex === 0 ? 1 : 0
     const fieldingTeam = match.teams[fieldingTeamIndex]
 
-    // Build fielding lookup for this innings
+    // Build fielding lookup for this innings (keyed by player ID)
     const fielderStats: Record<string, { catches: number; runOuts: number; stumpings: number }> = {}
     for (const [id, f] of Object.entries(innings.fielders ?? {})) {
       fielderStats[id] = { catches: f.catches, runOuts: f.runOuts, stumpings: f.stumpings }
@@ -247,8 +228,10 @@ export async function saveMatch(match: Match): Promise<void> {
       }
     }
 
+    // Track which fielding-team players already have a bowling row (for Fix 4)
+    const bowlerNames = new Set(Object.values(innings.bowlers).map((b) => b.name))
+
     for (const b of Object.values(innings.bowlers)) {
-      // Find player id to look up fielding
       const player = fieldingTeam.players.find((p) => p.name === b.name)
       const fs = player ? (fielderStats[player.id] ?? { catches: 0, runOuts: 0, stumpings: 0 }) : { catches: 0, runOuts: 0, stumpings: 0 }
       statsToAdd.push({
@@ -262,6 +245,52 @@ export async function saveMatch(match: Match): Promise<void> {
         bowl_did_bowl: true,
         field_catches: fs.catches, field_runouts: fs.runOuts, field_stumpings: fs.stumpings,
         is_mvp: b.name === mvpName,
+      })
+    }
+
+    // Fix 4: Add stat rows for fielders who didn't bowl (otherwise their fielding is silently lost)
+    for (const player of fieldingTeam.players) {
+      if (bowlerNames.has(player.name)) continue  // already has a bowling row
+      const fs = fielderStats[player.id]
+      if (!fs) continue
+      if (fs.catches === 0 && fs.runOuts === 0 && fs.stumpings === 0) continue
+      statsToAdd.push({
+        match_id: match.id, player_name: player.name, team_name: fieldingTeam.name,
+        opponent: battingTeam.name, match_date: completedAt,
+        bat_runs: 0, bat_balls: 0, bat_fours: 0, bat_sixes: 0,
+        bat_is_out: false, bat_wicket_type: null, bat_did_bat: false,
+        bowl_legal_balls: 0, bowl_runs_conceded: 0, bowl_wickets: 0,
+        bowl_wides: 0, bowl_no_balls: 0, bowl_maidens: 0, bowl_did_bowl: false,
+        field_catches: fs.catches, field_runouts: fs.runOuts, field_stumpings: fs.stumpings,
+        is_mvp: player.name === mvpName,
+      })
+    }
+  }
+
+  // Fix 3: Only increment total_matches for players who actually batted, bowled, or fielded
+  // Prevents benched roster members from inflating their match count
+  const activePlayers = new Set(statsToAdd.map((s) => s.player_name as string))
+  const uniqueNames = [...new Set([...match.teams[0].players, ...match.teams[1].players].map((p) => p.name))]
+  for (const name of uniqueNames) {
+    const existingPlayer = await fetchPlayer(name)
+    if (existingPlayer) {
+      if (activePlayers.has(name)) {
+        await supabase
+          .from('players')
+          .update({ last_seen_at: completedAt, total_matches: existingPlayer.totalMatches + 1 })
+          .eq('name', name)
+      } else {
+        await supabase
+          .from('players')
+          .update({ last_seen_at: completedAt })
+          .eq('name', name)
+      }
+    } else {
+      await supabase.from('players').insert({
+        name,
+        first_seen_at: completedAt,
+        last_seen_at: completedAt,
+        total_matches: activePlayers.has(name) ? 1 : 0,
       })
     }
   }
