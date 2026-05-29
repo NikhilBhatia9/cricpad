@@ -111,7 +111,6 @@ export async function fetchMatchesByIds(ids: string[]): Promise<MatchRecord[]> {
     .select('*')
     .in('id', ids)
     .order('completed_at', { ascending: false })
-    .limit(10)
   if (error) throw error
   return (data ?? []).map(rowToMatch)
 }
