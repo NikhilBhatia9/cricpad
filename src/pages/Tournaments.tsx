@@ -29,9 +29,9 @@ export default function Tournaments() {
   const [resultRunsB, setResultRunsB] = useState('')
   const [resultBallsB, setResultBallsB] = useState('')
 
-  useEffect(() => { setTournaments(getTournaments()) }, [])
+  useEffect(() => { getTournaments().then(setTournaments) }, [])
 
-  function reload() { setTournaments(getTournaments()) }
+  async function reload() { setTournaments(await getTournaments()) }
 
   const selectedTournament = tournaments.find((t) => t.id === selectedId) ?? null
   const selectedMatch: TournamentMatch | null = selectedTournament?.matches.find((m) => m.id === selectedMatchId) ?? null
@@ -41,7 +41,7 @@ export default function Tournaments() {
     setView('detail')
   }
 
-  function handleCreate() {
+  async function handleCreate() {
     const name = createName.trim()
     if (!name || createTeams.length < 2) return
     const t: Tournament = {
@@ -53,8 +53,8 @@ export default function Tournaments() {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }
-    upsertTournament(t)
-    reload()
+    await upsertTournament(t)
+    void reload()
     setCreateName(''); setCreateTeams([]); setCreateNewTeam('')
     setSelectedId(t.id)
     setView('detail')
@@ -62,7 +62,6 @@ export default function Tournaments() {
 
   function openEnterResult(m: TournamentMatch) {
     setSelectedMatchId(m.id)
-    // Pre-fill if editing existing result
     setResultWinner(m.result ?? '')
     setResultRunsA(m.runsA?.toString() ?? '')
     setResultBallsA(m.ballsFacedA?.toString() ?? '')
@@ -71,7 +70,7 @@ export default function Tournaments() {
     setView('enter-result')
   }
 
-  function handleSaveResult() {
+  async function handleSaveResult() {
     if (!selectedTournament || !selectedMatchId || !resultWinner) return
     const updated: Tournament = {
       ...selectedTournament,
@@ -89,18 +88,20 @@ export default function Tournaments() {
         }
       }),
     }
-    upsertTournament(updated)
-    reload()
+    await upsertTournament(updated)
+    // Optimistically update local state without waiting for reload
+    setTournaments((prev) => prev.map((t) => t.id === updated.id ? updated : t))
+    setSelectedId(updated.id)
     setSelectedMatchId(null)
     setResultWinner(''); setResultRunsA(''); setResultBallsA(''); setResultRunsB(''); setResultBallsB('')
     setView('detail')
   }
 
-  function handleDeleteTournament(id: string) {
-    deleteTournament(id)
+  async function handleDeleteTournament(id: string) {
+    await deleteTournament(id)
     if (selectedId === id) setSelectedId(null)
     setConfirmDeleteId(null)
-    reload()
+    void reload()
     setView('list')
   }
 

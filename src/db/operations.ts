@@ -1,6 +1,7 @@
 ﻿import { supabase } from '../config/supabase'
 import type { Match } from '../types/cricket'
 import type { PlayerRecord, MatchRecord, PlayerMatchStat, CareerBatting, CareerBowling, CareerFielding, LeaderboardEntry, SavedTeamRecord } from './types'
+import type { Tournament, TournamentMatch } from '../utils/tournament'
 import { computeMvp } from '../utils/mvp'
 
 // ─── Row mappers (DB snake_case → TS camelCase) ────────────────────────────
@@ -472,7 +473,42 @@ export async function fetchLeaderboard(since?: string): Promise<LeaderboardEntry
     .sort((a, b) => (b.totalMvpPoints !== a.totalMvpPoints ? b.totalMvpPoints - a.totalMvpPoints : b.mvpWins - a.mvpWins))
 }
 
-// ─── Saved Teams (cross-device via Supabase) ──────────────────────────────
+// ─── Tournaments (cross-device via Supabase) ──────────────────────────────
+
+export async function fetchTournaments(): Promise<Tournament[]> {
+  const { data, error } = await supabase
+    .from('tournaments')
+    .select('*')
+    .order('created_at', { ascending: false })
+  if (error) throw new Error(error.message)
+  return (data ?? []).map((r) => ({
+    id: r.id as string,
+    name: r.name as string,
+    teams: r.teams as string[],
+    overs: r.overs as number,
+    matches: r.matches as TournamentMatch[],
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+  }))
+}
+
+export async function upsertTournamentRecord(t: Tournament): Promise<void> {
+  const { error } = await supabase.from('tournaments').upsert({
+    id: t.id,
+    name: t.name,
+    teams: t.teams,
+    overs: t.overs,
+    matches: t.matches,
+    created_at: t.createdAt,
+    updated_at: t.updatedAt,
+  })
+  if (error) throw new Error(error.message)
+}
+
+export async function deleteTournamentRecord(id: string): Promise<void> {
+  const { error } = await supabase.from('tournaments').delete().eq('id', id)
+  if (error) throw new Error(error.message)
+}
 
 function rowToSavedTeam(r: Record<string, unknown>): SavedTeamRecord {
   return {
@@ -484,22 +520,25 @@ function rowToSavedTeam(r: Record<string, unknown>): SavedTeamRecord {
 }
 
 export async function fetchSavedTeams(): Promise<SavedTeamRecord[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('saved_teams')
     .select('*')
     .order('updated_at', { ascending: false })
+  if (error) throw new Error(error.message)
   return (data ?? []).map((r) => rowToSavedTeam(r as Record<string, unknown>))
 }
 
 export async function upsertSavedTeam(team: SavedTeamRecord): Promise<void> {
-  await supabase.from('saved_teams').upsert({
+  const { error } = await supabase.from('saved_teams').upsert({
     id: team.id,
     name: team.name,
     player_names: team.playerNames,
     updated_at: team.updatedAt,
   })
+  if (error) throw new Error(error.message)
 }
 
 export async function deleteSavedTeam(id: string): Promise<void> {
-  await supabase.from('saved_teams').delete().eq('id', id)
+  const { error } = await supabase.from('saved_teams').delete().eq('id', id)
+  if (error) throw new Error(error.message)
 }

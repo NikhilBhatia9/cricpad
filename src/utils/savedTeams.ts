@@ -16,21 +16,29 @@ async function migrateFromLocalStorage(): Promise<void> {
     if (!raw) return
     const local: SavedTeam[] = JSON.parse(raw)
     if (!local.length) return
-    // Check Supabase — only migrate if it's empty to avoid duplicates
+    // Only migrate if Supabase is empty to avoid duplicates
     const remote = await fetchSavedTeams()
-    if (remote.length > 0) return
+    if (remote.length > 0) {
+      localStorage.removeItem(LEGACY_KEY)
+      return
+    }
     for (const team of local) {
       await upsertSavedTeam(team)
     }
     localStorage.removeItem(LEGACY_KEY)
-  } catch {
-    // Non-fatal — migration is best-effort
+  } catch (e) {
+    console.error('[savedTeams] migration failed:', e)
   }
 }
 
 export async function getSavedTeams(): Promise<SavedTeam[]> {
-  await migrateFromLocalStorage()
-  return fetchSavedTeams()
+  try {
+    await migrateFromLocalStorage()
+    return await fetchSavedTeams()
+  } catch (e) {
+    console.error('[savedTeams] fetch failed:', e)
+    return []
+  }
 }
 
 export async function upsertTeam(team: SavedTeam): Promise<void> {
