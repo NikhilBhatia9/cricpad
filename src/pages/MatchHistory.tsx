@@ -176,10 +176,8 @@ export default function MatchHistory() {
               <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-2 px-1">{label}</p>
               <div className="space-y-2">
                 {items.map((m) => {
-                  const result = m.result ?? ''
-                  const isWin = result.toLowerCase().includes('won')
-                  const isTie = result.toLowerCase().includes('tied') || result.toLowerCase().includes('tie')
                   const scores = parsedScores[m.id]
+                  const result = m.result ?? ''
                   return (
                     <button
                       key={m.id}
@@ -193,18 +191,7 @@ export default function MatchHistory() {
                             {m.maxOvers} overs &middot; {new Date(m.completedAt).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short' })}
                           </p>
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          {result && (
-                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                              isTie ? 'bg-yellow-500/20 text-yellow-400' :
-                              isWin ? 'bg-green-500/20 text-green-400' :
-                              'bg-gray-500/20 text-gray-400'
-                            }`}>
-                              {isTie ? 'TIE' : isWin ? 'WIN' : 'RESULT'}
-                            </span>
-                          )}
-                          <span className="text-gray-500 text-lg">›</span>
-                        </div>
+                        <span className="text-gray-500 text-lg shrink-0">›</span>
                       </div>
                       {scores && (
                         <div className="mt-2 space-y-0.5">
