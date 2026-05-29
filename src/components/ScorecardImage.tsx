@@ -105,6 +105,22 @@ const ScorecardImage = forwardRef<HTMLDivElement, Props>(({ match, completedAt }
               </div>
             ))}
 
+            {/* Fall of Wickets */}
+            {inn && inn.fallOfWickets && inn.fallOfWickets.length > 0 && (
+              <div style={{ marginTop: '10px', marginBottom: '6px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ fontSize: '9px', color: '#475569', letterSpacing: '2px', textTransform: 'uppercase' as const, marginBottom: '5px' }}>Fall of Wickets</div>
+                <div style={{ fontSize: '11px', color: '#94a3b8', lineHeight: 1.6 }}>
+                  {inn.fallOfWickets.map((fow, i) => (
+                    <span key={i}>
+                      {i > 0 && <span style={{ color: '#334155' }}> · </span>}
+                      <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{fow.runs}-{fow.wicketNum}</span>
+                      <span style={{ color: '#64748b' }}> ({fow.batsmanName})</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Bowling */}
             {bowlers.length > 0 && (
               <>

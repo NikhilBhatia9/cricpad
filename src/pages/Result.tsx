@@ -5,6 +5,7 @@ import { scoreString, oversDisplay, sortedBatsmen, sortedBowlers, strikeRate, ec
 import { computeMvp, mvpNarrative } from '../utils/mvp'
 import { saveMatch } from '../db/operations'
 import ScorecardImage from '../components/ScorecardImage'
+import SocialCard from '../components/SocialCard'
 import { captureAndShare } from '../utils/shareScorecard'
 import { generateShareText } from '../utils/shareText'
 import type { Innings } from '../types/cricket'
@@ -20,7 +21,7 @@ function computeOverData(inn: Innings): OverBarPoint[] {
   })
 }
 
-function RunRateGraph({ inn1, inn2, team1, team2 }: {
+function ManhattanChart({ inn1, inn2, team1, team2 }: {
   inn1: Innings | null
   inn2: Innings | null
   team1: string
@@ -31,8 +32,8 @@ function RunRateGraph({ inn1, inn2, team1, team2 }: {
   if (d1.length === 0 && d2.length === 0) return null
 
   const numOvers = Math.max(d1.length, d2.length, 1)
-  const allRR = [...d1, ...d2].map((p) => p.rr)
-  const maxRR = Math.max(...allRR, 12)
+  const allRuns = [...d1, ...d2].map((p) => p.runs)
+  const maxRuns = Math.max(...allRuns, 6)
   const w = 320
   const h = 140
   const padL = 28
@@ -46,13 +47,16 @@ function RunRateGraph({ inn1, inn2, team1, team2 }: {
   function barX(i: number) {
     return padL + Math.floor((i / numOvers) * chartW) + Math.floor((chartW / numOvers - barW) / 2)
   }
-  function barH(rr: number) { return Math.round((rr / maxRR) * chartH) }
 
-  const yLines = [0, 6, 9, 12].filter((v) => v <= maxRR + 2)
+  function barH(runs: number) {
+    return Math.round((runs / maxRuns) * chartH)
+  }
+
+  const yLines = [0, Math.round(maxRuns / 2), maxRuns].filter((v, i, arr) => Number.isFinite(v) && arr.indexOf(v) === i)
 
   return (
     <div className="card mb-4">
-      <p className="text-sm font-semibold text-gray-300 mb-3">📈 Over-by-over Run Rate</p>
+      <p className="text-sm font-semibold text-gray-300 mb-3">📊 Manhattan — Runs per Over</p>
       <div className="flex gap-4 text-xs mb-3">
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded-sm bg-green-500/70" />
@@ -66,9 +70,8 @@ function RunRateGraph({ inn1, inn2, team1, team2 }: {
         )}
       </div>
       <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ maxHeight: 160 }}>
-        {/* Y-axis grid lines */}
         {yLines.map((v) => {
-          const y = padT + chartH - Math.round((v / maxRR) * chartH)
+          const y = padT + chartH - Math.round((v / maxRuns) * chartH)
           return (
             <g key={v}>
               <line x1={padL} x2={w - padR} y1={y} y2={y} stroke="#374151" strokeWidth={0.5} strokeDasharray={v === 0 ? undefined : '3 3'} />
@@ -76,9 +79,8 @@ function RunRateGraph({ inn1, inn2, team1, team2 }: {
             </g>
           )
         })}
-        {/* Bars — innings 1 */}
         {d1.map((p, i) => {
-          const bh = barH(p.rr)
+          const bh = barH(p.runs)
           const x = barX(i)
           const y = padT + chartH - bh
           return (
@@ -87,9 +89,8 @@ function RunRateGraph({ inn1, inn2, team1, team2 }: {
             </g>
           )
         })}
-        {/* Bars — innings 2 (offset slightly) */}
         {d2.map((p, i) => {
-          const bh = barH(p.rr)
+          const bh = barH(p.runs)
           const x = barX(i) + Math.floor(barW * 0.52)
           const y = padT + chartH - bh
           return (
@@ -98,20 +99,17 @@ function RunRateGraph({ inn1, inn2, team1, team2 }: {
             </g>
           )
         })}
-        {/* X-axis over labels */}
         {Array.from({ length: numOvers }, (_, i) => i + 1).filter((n) => n === 1 || n % Math.ceil(numOvers / 8) === 0 || n === numOvers).map((n) => {
           const x = barX(n - 1) + Math.floor(barW / 2)
           return (
             <text key={n} x={x} y={h - 6} textAnchor="middle" fontSize={8} fill="#6b7280">{n}</text>
           )
         })}
-        {/* X-axis label */}
         <text x={w / 2} y={h - 1} textAnchor="middle" fontSize={7} fill="#4b5563">Over</text>
-        {/* Runs per over tooltip row */}
         {d1.map((p, i) => {
           const x = barX(i) + Math.floor(barW / 2)
           return (
-            <text key={`rr1-${i}`} x={x} y={padT + chartH - barH(p.rr) - 2} textAnchor="middle" fontSize={7} fill="#86efac" opacity={p.runs >= 10 ? 1 : 0}>
+            <text key={`rr1-${i}`} x={x} y={padT + chartH - barH(p.runs) - 2} textAnchor="middle" fontSize={7} fill="#86efac" opacity={p.runs >= 10 ? 1 : 0}>
               {p.runs}
             </text>
           )
@@ -119,13 +117,12 @@ function RunRateGraph({ inn1, inn2, team1, team2 }: {
         {d2.map((p, i) => {
           const x = barX(i) + Math.floor(barW * 0.52) + Math.floor((barW - Math.floor(barW * 0.52)) / 2)
           return (
-            <text key={`rr2-${i}`} x={x} y={padT + chartH - barH(p.rr) - 2} textAnchor="middle" fontSize={7} fill="#93c5fd" opacity={p.runs >= 10 ? 1 : 0}>
+            <text key={`rr2-${i}`} x={x} y={padT + chartH - barH(p.runs) - 2} textAnchor="middle" fontSize={7} fill="#93c5fd" opacity={p.runs >= 10 ? 1 : 0}>
               {p.runs}
             </text>
           )
         })}
       </svg>
-      {/* Over run summary row */}
       <div className="mt-2 overflow-x-auto">
         <div className="flex gap-1 min-w-max">
           {Array.from({ length: Math.max(d1.length, d2.length) }, (_, i) => (
@@ -137,7 +134,6 @@ function RunRateGraph({ inn1, inn2, team1, team2 }: {
           ))}
         </div>
       </div>
-      {/* Totals row */}
       <div className="flex gap-4 mt-2 pt-2 border-t border-gray-700">
         {d1.length > 0 && (
           <p className="text-xs text-gray-400">
@@ -264,12 +260,79 @@ function ScoreWorm({ inn1, inn2, team1, team2, maxOvers }: {
   )
 }
 
+function FallOfWicketsTimeline({ inn }: { inn: Innings }) {
+  const fow = inn.fallOfWickets ?? []
+  const totalRuns = inn.totalRuns
+
+  if (fow.length === 0) {
+    return (
+      <div className="mb-3">
+        <p className="text-xs text-gray-500 font-semibold mb-1">Fall of Wickets</p>
+        <p className="text-xs text-gray-400">No wickets lost</p>
+      </div>
+    )
+  }
+
+  const w = 300
+  const svgH = 54
+  const lineY = 20
+  const padH = 12
+
+  type FowGroup = { runs: number; items: typeof fow }
+  const groups: FowGroup[] = []
+  fow.forEach((f) => {
+    const g = groups.find((group) => group.runs === f.runs)
+    if (g) g.items.push(f)
+    else groups.push({ runs: f.runs, items: [f] })
+  })
+
+  function xPos(runs: number) {
+    if (totalRuns === 0) return padH
+    return padH + ((runs / totalRuns) * (w - padH * 2))
+  }
+
+  return (
+    <div className="mb-3">
+      <p className="text-xs text-gray-500 font-semibold mb-1">Fall of Wickets</p>
+      <svg viewBox={`0 0 ${w} ${svgH}`} className="w-full text-gray-400" style={{ maxHeight: 60 }}>
+        <line x1={padH} y1={lineY} x2={w - padH} y2={lineY} stroke="currentColor" strokeOpacity={0.2} strokeWidth={1.5} />
+        <circle cx={padH} cy={lineY} r={2.5} fill="currentColor" fillOpacity={0.3} />
+        <circle cx={w - padH} cy={lineY} r={2.5} fill="currentColor" fillOpacity={0.3} />
+        <text x={padH} y={lineY + 12} textAnchor="middle" fontSize={7} fill="#6b7280">0</text>
+        <text x={w - padH} y={lineY + 12} textAnchor="middle" fontSize={7} fill="#6b7280">{totalRuns}</text>
+
+        {groups.map((group, gi) =>
+          group.items.map((f, fi) => {
+            const x = xPos(group.runs)
+            const xAdjusted = x + fi * 6
+            const dotY = lineY - (fi * 10)
+            return (
+              <g key={`${gi}-${fi}`}>
+                <line x1={xAdjusted} y1={dotY} x2={xAdjusted} y2={lineY} stroke="#ef4444" strokeWidth={1} strokeOpacity={0.6} />
+                <circle cx={xAdjusted} cy={dotY} r={5} fill="#ef4444" fillOpacity={0.85} />
+                <text x={xAdjusted} y={dotY + 3.5} textAnchor="middle" fontSize={6} fill="white" fontWeight="bold">{f.wicketNum}</text>
+                <text x={xAdjusted} y={lineY + 12} textAnchor="middle" fontSize={6.5} fill="#f87171">{f.runs}</text>
+                {fi === 0 && (
+                  <text x={xAdjusted} y={svgH - 2} textAnchor="middle" fontSize={5.5} fill="#9ca3af">
+                    {f.batsmanName.length > 8 ? `${f.batsmanName.slice(0, 7)}…` : f.batsmanName}
+                  </text>
+                )}
+              </g>
+            )
+          })
+        )}
+      </svg>
+    </div>
+  )
+}
+
 export default function Result() {
   const navigate = useNavigate()
   const { match, resetMatch, startSuperOver } = useMatchStore()
   const scorecardRef = useRef<HTMLDivElement>(null)
+  const socialCardRef = useRef<HTMLDivElement>(null)
   const [sharing, setSharing] = useState(false)
-  const [graphTab, setGraphTab] = useState<'rr' | 'worm'>('rr')
+  const [graphTab, setGraphTab] = useState<'manhattan' | 'worm'>('manhattan')
   const [copyDone, setCopyDone] = useState(false)
 
   useEffect(() => {
@@ -293,7 +356,20 @@ export default function Result() {
     setSharing(true)
     try {
       const title = `${match!.teams[0].name} vs ${match!.teams[1].name} \u2014 ${match!.result ?? 'Scorecard'}`
-      await captureAndShare(scorecardRef.current, title)
+      await captureAndShare(scorecardRef.current, title, 'scorecard.png')
+    } catch (e) {
+      console.error('Share failed', e)
+    } finally {
+      setSharing(false)
+    }
+  }
+
+  async function handleSocialCardShare() {
+    if (!socialCardRef.current) return
+    setSharing(true)
+    try {
+      const title = `${match!.teams[0].name} vs ${match!.teams[1].name} — ${match!.result ?? 'Match Summary'}`
+      await captureAndShare(socialCardRef.current, title, 'social-card.png')
     } catch (e) {
       console.error('Share failed', e)
     } finally {
@@ -386,14 +462,14 @@ export default function Result() {
         </div>
       )}
 
-      {/* Graph — tab toggle between Run Rate and Score Worm */}
+      {/* Graph — tab toggle between Manhattan and Score Worm */}
       <div className="mb-4">
         <div className="flex gap-1 bg-gray-800 rounded-xl p-1 mb-0">
           <button
-            onClick={() => setGraphTab('rr')}
-            className={`flex-1 py-1.5 rounded-lg text-sm font-semibold transition-colors ${graphTab === 'rr' ? 'bg-gray-600 text-white' : 'text-gray-400 hover:text-gray-300'}`}
+            onClick={() => setGraphTab('manhattan')}
+            className={`flex-1 py-1.5 rounded-lg text-sm font-semibold transition-colors ${graphTab === 'manhattan' ? 'bg-gray-600 text-white' : 'text-gray-400 hover:text-gray-300'}`}
           >
-            📈 Run Rate
+            📊 Manhattan
           </button>
           <button
             onClick={() => setGraphTab('worm')}
@@ -402,8 +478,8 @@ export default function Result() {
             🐛 Score Worm
           </button>
         </div>
-        {graphTab === 'rr' ? (
-          <RunRateGraph
+        {graphTab === 'manhattan' ? (
+          <ManhattanChart
             inn1={i1}
             inn2={i2}
             team1={match.teams[i1?.battingTeamIndex ?? 0].name}
@@ -460,19 +536,8 @@ export default function Result() {
             <p className="text-xs text-gray-500 mb-3">
               Extras: {inn.extras.wides}w &middot; {inn.extras.noBalls}nb &middot; {inn.extras.byes}b &middot; {inn.extras.legByes}lb
             </p>
-            {inn.fallOfWickets && inn.fallOfWickets.length > 0 && (
-              <div className="mb-3">
-                <p className="text-xs text-gray-500 font-semibold mb-1">Fall of Wickets</p>
-                <p className="text-xs text-gray-400 leading-relaxed">
-                  {inn.fallOfWickets.map((fow, i) => (
-                    <span key={i}>
-                      {i > 0 && <span className="text-gray-600"> &middot; </span>}
-                      <span className="text-white font-semibold">{fow.runs}-{fow.wicketNum}</span>
-                      <span className="text-gray-500"> ({fow.batsmanName}, {oversDisplay(fow.legalBalls)} ov)</span>
-                    </span>
-                  ))}
-                </p>
-              </div>
+            {inn.fallOfWickets !== undefined && (
+              <FallOfWicketsTimeline inn={inn} />
             )}
             <h3 className="text-sm text-gray-400 font-semibold mb-2">Bowling</h3>
             <table className="w-full text-sm">
@@ -519,6 +584,18 @@ export default function Result() {
           {copyDone ? '✅ Copied!' : '💬 Share Text'}
         </button>
         <button
+          className="flex-1 bg-purple-600 hover:bg-purple-500 active:bg-purple-700 text-white font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-colors"
+          onClick={handleSocialCardShare}
+          disabled={sharing}
+        >
+          {sharing ? (
+            <span className="animate-spin text-lg">&#x21BB;</span>
+          ) : (
+            <span>📸</span>
+          )}
+          {sharing ? 'Generating...' : 'Social Card'}
+        </button>
+        <button
           className="flex-1 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-colors"
           onClick={handleShare}
           disabled={sharing}
@@ -526,9 +603,9 @@ export default function Result() {
           {sharing ? (
             <span className="animate-spin text-lg">&#x21BB;</span>
           ) : (
-            <span>&#x1F4F2;</span>
+            <span>🧾</span>
           )}
-          {sharing ? 'Generating...' : 'Share Image'}
+          {sharing ? 'Generating...' : 'Scorecard'}
         </button>
         <button className="w-full btn-primary" onClick={() => { resetMatch(); navigate('/') }}>
           🏠 Homepage
@@ -538,6 +615,9 @@ export default function Result() {
       {/* Hidden scorecard for image capture */}
       <div style={{ position: 'fixed', left: '-9999px', top: 0, pointerEvents: 'none' }}>
         <ScorecardImage ref={scorecardRef} match={match} completedAt={new Date().toISOString()} />
+      </div>
+      <div style={{ position: 'fixed', left: '-9999px', top: 0, pointerEvents: 'none' }}>
+        <SocialCard ref={socialCardRef} match={match} completedAt={new Date().toISOString()} />
       </div>
     </div>
   )

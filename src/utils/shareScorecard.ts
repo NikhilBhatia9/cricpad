@@ -1,6 +1,6 @@
 import html2canvas from 'html2canvas'
 
-export async function captureAndShare(element: HTMLElement, title: string): Promise<void> {
+export async function captureAndShare(element: HTMLElement, title: string, filename = 'scorecard.png'): Promise<void> {
   const canvas = await html2canvas(element, {
     backgroundColor: null,
     scale: 2,
@@ -12,7 +12,7 @@ export async function captureAndShare(element: HTMLElement, title: string): Prom
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Failed to create blob'))), 'image/png')
   )
 
-  const file = new File([blob], 'scorecard.png', { type: 'image/png' })
+  const file = new File([blob], filename, { type: 'image/png' })
 
   if (navigator.canShare?.({ files: [file] })) {
     await navigator.share({ files: [file], title, text: title })
@@ -21,7 +21,7 @@ export async function captureAndShare(element: HTMLElement, title: string): Prom
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'scorecard.png'
+    a.download = filename
     a.click()
     URL.revokeObjectURL(url)
   }
