@@ -253,7 +253,7 @@ function MatchDetail({ matchId, onBack }: { matchId: string; onBack: () => void 
     }
   }
 
-  async function handleSocialCardShare(match: Match, completedAt: string) {
+  async function handleSocialCardShare(match: Match) {
     if (!socialCardRef.current) return
     setSharingCard(true)
     try {
@@ -355,7 +355,7 @@ function MatchDetail({ matchId, onBack }: { matchId: string; onBack: () => void 
       <div className="flex gap-2 mb-4">
         <button
           className="flex-1 bg-purple-600 hover:bg-purple-500 active:bg-purple-700 text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-2 transition-colors"
-          onClick={() => handleSocialCardShare(match, matchRecord.completedAt)}
+          onClick={() => handleSocialCardShare(match)}
           disabled={sharingCard}
         >
           {sharingCard ? <span className="animate-spin">&#x21BB;</span> : <span>📸</span>}
