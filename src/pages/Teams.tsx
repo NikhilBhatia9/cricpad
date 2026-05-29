@@ -21,7 +21,7 @@ export default function Teams() {
   const [createPool, setCreatePool] = useState<string[]>([])
 
   useEffect(() => {
-    setTeams(getSavedTeams())
+    getSavedTeams().then(setTeams)
     fetchAllPlayers()
       .then((ps) => setPlayerPool(ps.map((p) => p.name)))
       .catch(() => {})
@@ -43,15 +43,15 @@ export default function Teams() {
     }
   }, [showNew, playerPool])
 
-  function reload() {
-    setTeams(getSavedTeams())
+  async function reload() {
+    setTeams(await getSavedTeams())
   }
 
-  function handleSaveNew() {
+  async function handleSaveNew() {
     const name = newTeamName.trim()
     if (!name) return
     if (newTeamPlayers.length < 1) return
-    upsertTeam({
+    await upsertTeam({
       id: uuidv4(),
       name,
       playerNames: newTeamPlayers,
@@ -60,22 +60,22 @@ export default function Teams() {
     setShowNew(false)
     setNewTeamName('')
     setNewTeamPlayers([])
-    reload()
+    void reload()
   }
 
-  function handleSaveEdit() {
+  async function handleSaveEdit() {
     if (!editing) return
     const name = editing.name.trim()
     if (!name || editing.playerNames.length < 1) return
-    upsertTeam({ ...editing, name, updatedAt: new Date().toISOString() })
+    await upsertTeam({ ...editing, name, updatedAt: new Date().toISOString() })
     setEditing(null)
-    reload()
+    void reload()
   }
 
-  function handleDelete(id: string) {
-    deleteTeam(id)
+  async function handleDelete(id: string) {
+    await deleteTeam(id)
     setConfirmDelete(null)
-    reload()
+    void reload()
   }
 
   function togglePlayer(

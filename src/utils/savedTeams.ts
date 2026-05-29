@@ -1,34 +1,43 @@
-const STORAGE_KEY = 'cricket_saved_teams'
+import { fetchSavedTeams, upsertSavedTeam, deleteSavedTeam } from '../db/operations'
+import type { SavedTeamRecord } from '../db/types'
 
-export interface SavedTeam {
-  id: string
-  name: string
-  playerNames: string[]
-  updatedAt: string
-}
+// Keep the SavedTeam alias for backward compat across the codebase
+export type SavedTeam = SavedTeamRecord
 
-export function getSavedTeams(): SavedTeam[] {
+const LEGACY_KEY = 'cricket_saved_teams'
+
+/**
+ * One-time migration: if localStorage has teams and Supabase is empty,
+ * upload localStorage teams to Supabase so the primary device's data is preserved.
+ */
+async function migrateFromLocalStorage(): Promise<void> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return []
-    return JSON.parse(raw) as SavedTeam[]
+    const raw = localStorage.getItem(LEGACY_KEY)
+    if (!raw) return
+    const local: SavedTeam[] = JSON.parse(raw)
+    if (!local.length) return
+    // Check Supabase — only migrate if it's empty to avoid duplicates
+    const remote = await fetchSavedTeams()
+    if (remote.length > 0) return
+    for (const team of local) {
+      await upsertSavedTeam(team)
+    }
+    localStorage.removeItem(LEGACY_KEY)
   } catch {
-    return []
+    // Non-fatal — migration is best-effort
   }
 }
 
-export function upsertTeam(team: SavedTeam): void {
-  const teams = getSavedTeams()
-  const idx = teams.findIndex((t) => t.id === team.id)
-  if (idx >= 0) {
-    teams[idx] = team
-  } else {
-    teams.push(team)
-  }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(teams))
+export async function getSavedTeams(): Promise<SavedTeam[]> {
+  await migrateFromLocalStorage()
+  return fetchSavedTeams()
 }
 
-export function deleteTeam(id: string): void {
-  const teams = getSavedTeams().filter((t) => t.id !== id)
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(teams))
+export async function upsertTeam(team: SavedTeam): Promise<void> {
+  return upsertSavedTeam(team)
 }
+
+export async function deleteTeam(id: string): Promise<void> {
+  return deleteSavedTeam(id)
+}
+

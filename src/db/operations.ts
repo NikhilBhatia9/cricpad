@@ -1,6 +1,6 @@
 ﻿import { supabase } from '../config/supabase'
 import type { Match } from '../types/cricket'
-import type { PlayerRecord, MatchRecord, PlayerMatchStat, CareerBatting, CareerBowling, CareerFielding, LeaderboardEntry } from './types'
+import type { PlayerRecord, MatchRecord, PlayerMatchStat, CareerBatting, CareerBowling, CareerFielding, LeaderboardEntry, SavedTeamRecord } from './types'
 import { computeMvp } from '../utils/mvp'
 
 // ─── Row mappers (DB snake_case → TS camelCase) ────────────────────────────
@@ -470,4 +470,36 @@ export async function fetchLeaderboard(since?: string): Promise<LeaderboardEntry
       matches: s.matchIds.size,
     }))
     .sort((a, b) => (b.totalMvpPoints !== a.totalMvpPoints ? b.totalMvpPoints - a.totalMvpPoints : b.mvpWins - a.mvpWins))
+}
+
+// ─── Saved Teams (cross-device via Supabase) ──────────────────────────────
+
+function rowToSavedTeam(r: Record<string, unknown>): SavedTeamRecord {
+  return {
+    id: r.id as string,
+    name: r.name as string,
+    playerNames: r.player_names as string[],
+    updatedAt: r.updated_at as string,
+  }
+}
+
+export async function fetchSavedTeams(): Promise<SavedTeamRecord[]> {
+  const { data } = await supabase
+    .from('saved_teams')
+    .select('*')
+    .order('updated_at', { ascending: false })
+  return (data ?? []).map((r) => rowToSavedTeam(r as Record<string, unknown>))
+}
+
+export async function upsertSavedTeam(team: SavedTeamRecord): Promise<void> {
+  await supabase.from('saved_teams').upsert({
+    id: team.id,
+    name: team.name,
+    player_names: team.playerNames,
+    updated_at: team.updatedAt,
+  })
+}
+
+export async function deleteSavedTeam(id: string): Promise<void> {
+  await supabase.from('saved_teams').delete().eq('id', id)
 }

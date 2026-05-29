@@ -5,6 +5,13 @@ export interface PlayerRecord {
   totalMatches: number
 }
 
+export interface SavedTeamRecord {
+  id: string
+  name: string
+  playerNames: string[]
+  updatedAt: string
+}
+
 export interface MatchRecord {
   id: string          // Primary key (match UUID)
   teamAName: string

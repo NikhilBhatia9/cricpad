@@ -32,7 +32,7 @@ export default function MatchSetup() {
   const [loadTeamSlot, setLoadTeamSlot] = useState<'A' | 'B' | null>(null)
 
   useEffect(() => {
-    setSavedTeams(getSavedTeams())
+    getSavedTeams().then(setSavedTeams)
     fetchAllPlayers()
       .then((ps) => {
         const names = ps.map((p) => p.name)
