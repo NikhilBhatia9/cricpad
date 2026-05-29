@@ -267,30 +267,21 @@ export async function saveMatch(match: Match): Promise<void> {
     }
   }
 
-  // Fix 3: Only increment total_matches for players who actually batted, bowled, or fielded
-  // Prevents benched roster members from inflating their match count
-  const activePlayers = new Set(statsToAdd.map((s) => s.player_name as string))
+  // Increment total_matches for all roster members — being on the team counts as playing
   const uniqueNames = [...new Set([...match.teams[0].players, ...match.teams[1].players].map((p) => p.name))]
   for (const name of uniqueNames) {
     const existingPlayer = await fetchPlayer(name)
     if (existingPlayer) {
-      if (activePlayers.has(name)) {
-        await supabase
-          .from('players')
-          .update({ last_seen_at: completedAt, total_matches: existingPlayer.totalMatches + 1 })
-          .eq('name', name)
-      } else {
-        await supabase
-          .from('players')
-          .update({ last_seen_at: completedAt })
-          .eq('name', name)
-      }
+      await supabase
+        .from('players')
+        .update({ last_seen_at: completedAt, total_matches: existingPlayer.totalMatches + 1 })
+        .eq('name', name)
     } else {
       await supabase.from('players').insert({
         name,
         first_seen_at: completedAt,
         last_seen_at: completedAt,
-        total_matches: activePlayers.has(name) ? 1 : 0,
+        total_matches: 1,
       })
     }
   }
