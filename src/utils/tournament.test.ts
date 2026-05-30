@@ -294,9 +294,11 @@ describe('computeStandings', () => {
   })
 
   it('standings are sorted by points descending', () => {
+    // result 'A' = teamA (first column) wins; result 'B' = teamB (second column) wins
+    // A beats B, A beats C, B beats C → A=4pts, B=2pts, C=0pts
     const t = makeLeagueTournament(
       ['A', 'B', 'C'],
-      [['A', 'B', 'A'], ['A', 'C', 'A'], ['B', 'C', 'B']]
+      [['A', 'B', 'A'], ['A', 'C', 'A'], ['B', 'C', 'A']]
     )
     const standings = computeStandings(t)
     expect(standings[0].team).toBe('A') // 4 points
