@@ -11,6 +11,8 @@ interface MatchStore {
   spectatorCode: string | null
   isSpectator: boolean
   undoHistory: Innings[]
+  /** Set when a match is started from a tournament fixture — cleared after result is saved */
+  tournamentContext: { tournamentId: string; matchId: string } | null
 
   // Setup
   createMatch: (teams: [Team, Team], maxOvers: number) => void
@@ -33,6 +35,9 @@ interface MatchStore {
   setSpectatorCode: (code: string | null) => void
   setIsSpectator: (val: boolean) => void
   loadRemoteMatch: (match: Match) => void
+
+  // Tournament
+  setTournamentContext: (ctx: { tournamentId: string; matchId: string } | null) => void
 }
 
 function createInnings(battingTeamIndex: 0 | 1, target?: number): Innings {
@@ -62,6 +67,7 @@ export const useMatchStore = create<MatchStore>()(
       spectatorCode: null,
       isSpectator: false,
       undoHistory: [],
+      tournamentContext: null,
 
       createMatch: (teams, maxOvers) => {
         const match: Match = {
@@ -392,13 +398,15 @@ export const useMatchStore = create<MatchStore>()(
         })
       },
 
-      resetMatch: () => set({ match: null, roomCode: null, spectatorCode: null, isSpectator: false, undoHistory: [] }),
+      resetMatch: () => set({ match: null, roomCode: null, spectatorCode: null, isSpectator: false, undoHistory: [], tournamentContext: null }),
 
       setRoomCode: (code) => set({ roomCode: code }),
       setSpectatorCode: (code) => set({ spectatorCode: code }),
       setIsSpectator: (val) => set({ isSpectator: val }),
 
       loadRemoteMatch: (match) => set({ match }),
+
+      setTournamentContext: (ctx) => set({ tournamentContext: ctx }),
     }),
     { name: 'cricket-match', partialize: (s) => ({ match: s.match, roomCode: s.roomCode, spectatorCode: s.spectatorCode, undoHistory: s.undoHistory }) }
   )

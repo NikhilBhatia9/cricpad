@@ -10,12 +10,14 @@ import type { Tournament, TournamentMatch, TournamentFormat } from '../utils/tou
 import { getSavedTeams } from '../utils/savedTeams'
 import type { SavedTeam } from '../utils/savedTeams'
 import BackButton from '../components/BackButton'
+import { useMatchStore } from '../store/matchStore'
 
 type TView = 'list' | 'create' | 'detail' | 'enter-result'
 type CreateStep = 1 | 2 | 3 | 4
 
 export default function Tournaments() {
   const navigate = useNavigate()
+  const { setTournamentContext } = useMatchStore()
   const [tournaments, setTournaments] = useState<Tournament[]>([])
   const [savedTeams, setSavedTeams] = useState<SavedTeam[]>([])
   const [view, setView] = useState<TView>('list')
@@ -156,6 +158,18 @@ export default function Tournaments() {
     setView('list')
   }
 
+  /** Launch the live scorer for a tournament fixture */
+  function handleStartLiveMatch(t: Tournament, m: TournamentMatch) {
+    setTournamentContext({ tournamentId: t.id, matchId: m.id })
+    navigate('/setup', {
+      state: {
+        prefillTeamA: m.teamA,
+        prefillTeamB: m.teamB,
+        prefillOvers: String(t.overs),
+      },
+    })
+  }
+
   // ── Enter Result view ──────────────────────────────────────────────────────
   if (view === 'enter-result' && selectedTournament && selectedMatch) {
     const btnBase = 'flex-1 py-3 rounded-xl font-bold text-sm transition-colors border-2'
@@ -264,9 +278,9 @@ export default function Tournaments() {
           </div>
         )}
 
-        {fmt === 'league' && <LeagueDetail t={selectedTournament} onEnterResult={openEnterResult} />}
-        {fmt === 'series' && <SeriesDetail t={selectedTournament} onEnterResult={openEnterResult} />}
-        {fmt === 'elimination' && <EliminationDetail t={selectedTournament} onEnterResult={openEnterResult} />}
+        {fmt === 'league' && <LeagueDetail t={selectedTournament} onEnterResult={openEnterResult} onStartMatch={(m) => handleStartLiveMatch(selectedTournament, m)} />}
+        {fmt === 'series' && <SeriesDetail t={selectedTournament} onEnterResult={openEnterResult} onStartMatch={(m) => handleStartLiveMatch(selectedTournament, m)} />}
+        {fmt === 'elimination' && <EliminationDetail t={selectedTournament} onEnterResult={openEnterResult} onStartMatch={(m) => handleStartLiveMatch(selectedTournament, m)} />}
       </div>
     )
   }
@@ -610,7 +624,7 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
   )
 }
 
-function LeagueDetail({ t, onEnterResult }: { t: Tournament; onEnterResult: (m: TournamentMatch) => void }) {
+function LeagueDetail({ t, onEnterResult, onStartMatch }: { t: Tournament; onEnterResult: (m: TournamentMatch) => void; onStartMatch: (m: TournamentMatch) => void }) {
   const standings = computeStandings(t)
   return (
     <>
@@ -649,12 +663,12 @@ function LeagueDetail({ t, onEnterResult }: { t: Tournament; onEnterResult: (m: 
           </table>
         </div>
       </div>
-      <FixtureList matches={t.matches} onEnterResult={onEnterResult} />
+      <FixtureList matches={t.matches} onEnterResult={onEnterResult} onStartMatch={onStartMatch} />
     </>
   )
 }
 
-function SeriesDetail({ t, onEnterResult }: { t: Tournament; onEnterResult: (m: TournamentMatch) => void }) {
+function SeriesDetail({ t, onEnterResult, onStartMatch }: { t: Tournament; onEnterResult: (m: TournamentMatch) => void; onStartMatch: (m: TournamentMatch) => void }) {
   const sr = computeSeriesResult(t)
   const needed = Math.ceil((t.seriesLength ?? 3) / 2)
 
@@ -683,13 +697,11 @@ function SeriesDetail({ t, onEnterResult }: { t: Tournament; onEnterResult: (m: 
         )}
       </div>
 
-      {/* Game list — only show games up to the point series is decided */}
       <div className="space-y-2">
         <p className="text-sm font-bold text-gray-300 mb-2">Games</p>
         {t.matches.map((m) => {
           const done = !!m.result
           const winnerName = m.result === 'A' ? m.teamA : m.result === 'B' ? m.teamB : null
-          // Grey out games after series is decided
           const seriesOver = sr.winner !== null
           const gameDecisive = m.gameNumber !== undefined && sr.winner !== null &&
             ((sr.winsA >= needed && m.result === 'A') || (sr.winsB >= needed && m.result === 'B'))
@@ -705,18 +717,11 @@ function SeriesDetail({ t, onEnterResult }: { t: Tournament; onEnterResult: (m: 
                       {winnerName && <span className={gameDecisive ? 'text-green-300' : 'text-green-400'}>🏆 {winnerName}{gameDecisive ? ' — Series won!' : ''}</span>}
                     </p>
                   ) : (
-                    <p className="text-sm text-gray-400">Not played</p>
+                    <p className="text-sm text-gray-400">Not played yet</p>
                   )}
                 </div>
                 {!seriesOver && (
-                  <button
-                    onClick={() => onEnterResult(m)}
-                    className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors ${
-                      done ? 'bg-gray-700 text-gray-400 hover:bg-gray-600' : 'bg-green-700 hover:bg-green-600 text-white'
-                    }`}
-                  >
-                    {done ? 'Edit' : 'Add Result'}
-                  </button>
+                  <MatchActionButtons done={done} onStart={() => onStartMatch(m)} onEdit={() => onEnterResult(m)} />
                 )}
               </div>
             </div>
@@ -727,7 +732,7 @@ function SeriesDetail({ t, onEnterResult }: { t: Tournament; onEnterResult: (m: 
   )
 }
 
-function EliminationDetail({ t, onEnterResult }: { t: Tournament; onEnterResult: (m: TournamentMatch) => void }) {
+function EliminationDetail({ t, onEnterResult, onStartMatch }: { t: Tournament; onEnterResult: (m: TournamentMatch) => void; onStartMatch: (m: TournamentMatch) => void }) {
   const rounds = useMemo(() => {
     const map: Record<number, TournamentMatch[]> = {}
     for (const m of t.matches) {
@@ -780,14 +785,7 @@ function EliminationDetail({ t, onEnterResult }: { t: Tournament; onEnterResult:
                         {isBye && <p className="text-xs text-gray-500 mt-0.5">Bye — auto-advance</p>}
                       </div>
                       {!isTBD && !isBye && (
-                        <button
-                          onClick={() => onEnterResult(m)}
-                          className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors ${
-                            done ? 'bg-gray-700 text-gray-400 hover:bg-gray-600' : 'bg-green-700 hover:bg-green-600 text-white'
-                          }`}
-                        >
-                          {done ? 'Edit' : 'Add Result'}
-                        </button>
+                        <MatchActionButtons done={done} onStart={() => onStartMatch(m)} onEdit={() => onEnterResult(m)} />
                       )}
                     </div>
                   </div>
@@ -801,7 +799,7 @@ function EliminationDetail({ t, onEnterResult }: { t: Tournament; onEnterResult:
   )
 }
 
-function FixtureList({ matches, onEnterResult }: { matches: TournamentMatch[]; onEnterResult: (m: TournamentMatch) => void }) {
+function FixtureList({ matches, onEnterResult, onStartMatch }: { matches: TournamentMatch[]; onEnterResult: (m: TournamentMatch) => void; onStartMatch: (m: TournamentMatch) => void }) {
   return (
     <div className="space-y-2">
       <p className="text-sm font-bold text-gray-300 mb-2">Fixtures</p>
@@ -824,18 +822,42 @@ function FixtureList({ matches, onEnterResult }: { matches: TournamentMatch[]; o
                   </p>
                 )}
               </div>
-              <button
-                onClick={() => onEnterResult(m)}
-                className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors ${
-                  done ? 'bg-gray-700 text-gray-400 hover:bg-gray-600' : 'bg-green-700 hover:bg-green-600 text-white'
-                }`}
-              >
-                {done ? 'Edit' : 'Add Result'}
-              </button>
+              <MatchActionButtons done={done} onStart={() => onStartMatch(m)} onEdit={() => onEnterResult(m)} />
             </div>
           </div>
         )
       })}
     </div>
+  )
+}
+
+/** Start Match button (unplayed) or Edit button (played) */
+function MatchActionButtons({ done, onStart, onEdit }: { done: boolean; onStart: () => void; onEdit: () => void }) {
+  if (!done) {
+    return (
+      <div className="flex gap-1.5">
+        <button
+          onClick={onStart}
+          className="text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors bg-green-600 hover:bg-green-500 text-white flex items-center gap-1"
+        >
+          ▶ Score
+        </button>
+        <button
+          onClick={onEdit}
+          className="text-xs px-2 py-1.5 rounded-lg font-semibold transition-colors bg-gray-700 text-gray-400 hover:bg-gray-600"
+          title="Enter result manually"
+        >
+          ✎
+        </button>
+      </div>
+    )
+  }
+  return (
+    <button
+      onClick={onEdit}
+      className="text-xs px-3 py-1.5 rounded-lg font-semibold transition-colors bg-gray-700 text-gray-400 hover:bg-gray-600"
+    >
+      Edit
+    </button>
   )
 }

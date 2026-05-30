@@ -9,10 +9,48 @@ import SocialCard from '../components/SocialCard'
 import { captureAndShare } from '../utils/shareScorecard'
 import { generateShareText } from '../utils/shareText'
 import { ManhattanChart, ScoreWorm, FallOfWicketsTimeline } from '../components/MatchCharts'
+import { getTournaments, upsertTournament } from '../utils/tournament'
+import type { Match } from '../types/cricket'
+
+/** Derive tournament result + NRR data from a completed match */
+function deriveTournamentMatchResult(match: Match): {
+  result: 'A' | 'B' | 'tie' | 'no_result'
+  runsA?: number
+  ballsFacedA?: number
+  runsB?: number
+  ballsFacedB?: number
+} {
+  const resultStr = (match.result ?? '').toLowerCase()
+  const teamAName = match.teams[0].name.toLowerCase()
+  const teamBName = match.teams[1].name.toLowerCase()
+
+  let result: 'A' | 'B' | 'tie' | 'no_result' = 'no_result'
+  if (resultStr.includes('tied') || resultStr === 'match tied!') {
+    result = 'tie'
+  } else if (resultStr.startsWith(teamAName)) {
+    result = 'A'
+  } else if (resultStr.startsWith(teamBName)) {
+    result = 'B'
+  }
+
+  // Map innings to teams: innings[n].battingTeamIndex tells us which team batted
+  const i1 = match.innings[0]
+  const i2 = match.innings[1]
+  const teamAInn = i1?.battingTeamIndex === 0 ? i1 : i2
+  const teamBInn = i1?.battingTeamIndex === 1 ? i1 : i2
+
+  return {
+    result,
+    runsA: teamAInn?.totalRuns,
+    ballsFacedA: teamAInn?.totalLegalBalls,
+    runsB: teamBInn?.totalRuns,
+    ballsFacedB: teamBInn?.totalLegalBalls,
+  }
+}
 
 export default function Result() {
   const navigate = useNavigate()
-  const { match, resetMatch, startSuperOver } = useMatchStore()
+  const { match, resetMatch, startSuperOver, tournamentContext, setTournamentContext } = useMatchStore()
   const scorecardRef = useRef<HTMLDivElement>(null)
   const socialCardRef = useRef<HTMLDivElement>(null)
   const [sharing, setSharing] = useState(false)
@@ -20,8 +58,45 @@ export default function Result() {
   const [copyDone, setCopyDone] = useState(false)
 
   useEffect(() => {
-    if (match?.status === 'complete') saveMatch(match)
-  }, [match])
+    if (match?.status !== 'complete') return
+    saveMatch(match)
+
+    // If this match was started from a tournament, update that fixture automatically
+    if (tournamentContext) {
+      const { tournamentId, matchId } = tournamentContext
+      const derived = deriveTournamentMatchResult(match)
+      getTournaments().then((tournaments) => {
+        const t = tournaments.find((t) => t.id === tournamentId)
+        if (!t) return
+        const updated = {
+          ...t,
+          updatedAt: new Date().toISOString(),
+          matches: t.matches.map((m) => {
+            if (m.id !== matchId) return m
+            return {
+              ...m,
+              result: derived.result,
+              runsA: derived.runsA,
+              ballsFacedA: derived.ballsFacedA,
+              runsB: derived.runsB,
+              ballsFacedB: derived.ballsFacedB,
+              playedAt: new Date().toISOString(),
+            }
+          }),
+        }
+        // For elimination, advance the winner
+        if (updated.format === 'elimination') {
+          import('../utils/tournament').then(({ advanceEliminationWinner }) => {
+            const advanced = advanceEliminationWinner(updated, matchId)
+            upsertTournament(advanced).catch(console.error)
+          })
+        } else {
+          upsertTournament(updated).catch(console.error)
+        }
+        setTournamentContext(null)
+      }).catch(console.error)
+    }
+  }, [match?.status]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!match) return <div className="p-6">No match data. <button onClick={() => navigate('/')}>Go home</button></div>
 

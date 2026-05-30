@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { v4 as uuidv4 } from 'uuid'
 import { useMatchStore } from '../store/matchStore'
 import type { Team, Player } from '../types/cricket'
@@ -18,11 +18,15 @@ function buildTeam(name: string, playerNames: string[]): Team {
 
 export default function MatchSetup() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { createMatch } = useMatchStore()
 
-  const [teamAName, setTeamAName] = useState('')
-  const [teamBName, setTeamBName] = useState('')
-  const [overs, setOvers] = useState('10')
+  // Pre-fill when launched from a tournament fixture
+  const prefill = (location.state as { prefillTeamA?: string; prefillTeamB?: string; prefillOvers?: string } | null) ?? {}
+
+  const [teamAName, setTeamAName] = useState(prefill.prefillTeamA ?? '')
+  const [teamBName, setTeamBName] = useState(prefill.prefillTeamB ?? '')
+  const [overs, setOvers] = useState(prefill.prefillOvers ?? '10')
   const [pool, setPool] = useState<string[]>([])
   const [assignments, setAssignments] = useState<Record<string, Assignment>>({})
   const [newName, setNewName] = useState('')
