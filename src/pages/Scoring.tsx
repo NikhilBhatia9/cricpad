@@ -343,6 +343,14 @@ export default function Scoring() {
       (p) => !alreadyOut.includes(p.id) && p.id !== stayingPlayerId && !batsmanExcludeShared.includes(p.id)
     )
 
+    const isEndOfOver = innings.totalLegalBalls > 0 && innings.totalLegalBalls % 6 === 0
+
+    // Common-player rule: if the striker is dismissed mid-over while the shared player is bowling,
+    // the non-striker must cross to take the strike so the bowler can finish the over.
+    // The incoming batsman goes to the non-striker end instead.
+    const commonPlayerMustBowl = strikerDismissed && !isEndOfOver && batsmanExcludeShared.length > 0
+    const nonStrikerName = innings.nonStrikerId ? innings.batsmen[innings.nonStrikerId]?.name : null
+
     // No replacement available — last batsman scenario
     if (available.length === 0) {
       const lastManName = strikerDismissed
@@ -368,27 +376,40 @@ export default function Scoring() {
     }
 
     return (
-      <PlayerSelector
-        title="New Batsman"
-        players={battingTeam.players}
-        exclude={[...alreadyOut, stayingPlayerId, ...batsmanExcludeShared]}
-        onSelect={(id) => {
-          if (strikerDismissed) {
-            // B-04: wicket on last ball of over → non-striker crosses and faces;
-            // new batsman comes in at far end (non-striker slot)
-            const isEndOfOver = innings.totalLegalBalls > 0 && innings.totalLegalBalls % 6 === 0
-            if (isEndOfOver && innings.nonStrikerId) {
-              setBatsmen(innings.nonStrikerId, id)
+      <>
+        {commonPlayerMustBowl && nonStrikerName && (
+          <div className="px-4 pt-6 max-w-lg mx-auto">
+            <div className="bg-yellow-900/30 border border-yellow-700/50 rounded-xl p-4 mb-0 text-sm text-center">
+              <p className="text-yellow-300 font-semibold mb-1">⚠️ {activeBowlerName} must finish the over</p>
+              <p className="text-gray-300">{nonStrikerName} crosses to take the strike.</p>
+              <p className="text-gray-400 text-xs mt-1">Select who will bat at the non-striker end.</p>
+            </div>
+          </div>
+        )}
+        <PlayerSelector
+          title="New Batsman"
+          players={battingTeam.players}
+          exclude={[...alreadyOut, stayingPlayerId, ...batsmanExcludeShared]}
+          onSelect={(id) => {
+            if (strikerDismissed) {
+              if (isEndOfOver && innings.nonStrikerId) {
+                // B-04: wicket on last ball of over — non-striker crosses and faces
+                setBatsmen(innings.nonStrikerId, id)
+              } else if (commonPlayerMustBowl && innings.nonStrikerId) {
+                // Common-player rule: non-striker takes strike, new batsman at non-striker end
+                setBatsmen(innings.nonStrikerId!, id)
+              } else {
+                // Normal mid-over wicket: new batsman takes the strike
+                setBatsmen(id, innings.nonStrikerId ?? '')
+              }
             } else {
-              setBatsmen(id, innings.nonStrikerId ?? '')
+              // Non-striker was run out — new batsman goes to non-striker end
+              setBatsmen(innings.strikerId!, id)
             }
-          } else {
-            // Non-striker was run out — new batsman goes to non-striker end
-            setBatsmen(innings.strikerId!, id)
-          }
-          setShowNewBatsman(false)
-        }}
-      />
+            setShowNewBatsman(false)
+          }}
+        />
+      </>
     )
   }
 
