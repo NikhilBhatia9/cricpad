@@ -318,6 +318,39 @@ export default function Scoring() {
     setShowNewBatsman(true)
   }
 
+  // ── Common-player defer logic (hoisted before all conditional renders) ──
+  // When the common player is the only remaining batsman but is currently bowling,
+  // we defer the new-batsman / needsBatsmen screens to let over-summary → bowler-select
+  // flow run first; once a non-shared bowler is active, batsmanExcludeShared clears
+  // and the common player becomes selectable.
+  const _alreadyOut = Object.keys(innings.batsmen).filter((id) => innings.batsmen[id].isOut)
+  const _strikerDismissed = innings.strikerId === null
+  const _stayingPlayerId = _strikerDismissed ? (innings.nonStrikerId ?? '') : (innings.strikerId ?? '')
+  const _availableForNew = battingTeam.players.filter(
+    (p) => !_alreadyOut.includes(p.id) && p.id !== _stayingPlayerId && !batsmanExcludeShared.includes(p.id)
+  )
+  const _availableIgnoringShared = battingTeam.players.filter(
+    (p) => !_alreadyOut.includes(p.id) && p.id !== _stayingPlayerId
+  )
+  // True when the only remaining batsman is the common player who is currently bowling
+  const commonPlayerIsOnlyOption =
+    _availableForNew.length === 0 && batsmanExcludeShared.length > 0 && _availableIgnoringShared.length > 0
+  // End-of-over: defer both screens — let over-summary + new-bowler flow resolve first
+  const deferNewBatsman = showNewBatsman && isNewOver && commonPlayerIsOnlyOption
+  // Same defer for needsBatsmen (striker and non-striker both null after all-out at over end)
+  const _openingAvailable = battingTeam.players.filter(
+    (p) => !_alreadyOut.includes(p.id) && !batsmanExcludeShared.includes(p.id)
+  )
+  const _openingAvailableIgnoringShared = battingTeam.players.filter(
+    (p) => !_alreadyOut.includes(p.id)
+  )
+  const commonPlayerOnlyForOpening =
+    needsBatsmen &&
+    _openingAvailable.length === 0 &&
+    batsmanExcludeShared.length > 0 &&
+    _openingAvailableIgnoringShared.length > 0
+  const deferNeedsBatsmen = commonPlayerOnlyForOpening && isNewOver
+
   // ── Milestone celebration overlay ──
   if (milestone) {
     return (
@@ -334,7 +367,7 @@ export default function Scoring() {
   }
 
   // ── 1. New batsman after wicket ──
-  if (showNewBatsman) {
+  if (showNewBatsman && !deferNewBatsman) {
     // Determine which position needs filling
     const strikerDismissed = innings.strikerId === null
     const stayingPlayerId = strikerDismissed ? (innings.nonStrikerId ?? '') : (innings.strikerId ?? '')
@@ -351,8 +384,41 @@ export default function Scoring() {
     const commonPlayerMustBowl = strikerDismissed && !isEndOfOver && batsmanExcludeShared.length > 0
     const nonStrikerName = innings.nonStrikerId ? innings.batsmen[innings.nonStrikerId]?.name : null
 
-    // No replacement available — last batsman scenario
+    // No replacement available — handle based on why
     if (available.length === 0) {
+      // Mid-over: common player is the only remaining batsman but is currently bowling.
+      // Rule: a replacement bowler finishes the over while the common player takes the bat.
+      if (commonPlayerIsOnlyOption && !isEndOfOver) {
+        const commonBatsman = _availableIgnoringShared[0]
+        const remainingBalls = 6 - (innings.totalLegalBalls % 6)
+        return (
+          <>
+            <div className="px-4 pt-6 max-w-lg mx-auto">
+              <div className="bg-yellow-900/30 border border-yellow-700/50 rounded-xl p-4 mb-4 text-sm text-center">
+                <p className="text-yellow-300 font-semibold mb-1">⚠️ All batsmen are out</p>
+                <p className="text-gray-300">
+                  {commonBatsman?.name ?? activeBowlerName} will bat — select a replacement bowler to finish this over.
+                </p>
+                <p className="text-gray-400 text-xs mt-1">
+                  {remainingBalls} ball{remainingBalls !== 1 ? 's' : ''} remaining in this over.
+                </p>
+              </div>
+            </div>
+            <PlayerSelector
+              title="Replacement Bowler"
+              players={fieldingTeam.players}
+              exclude={[innings.bowlerId ?? '']}
+              onSelect={(id) => {
+                setBowler(id)
+                if (commonBatsman) setBatsmen(commonBatsman.id, innings.nonStrikerId ?? '')
+                setShowNewBatsman(false)
+              }}
+            />
+          </>
+        )
+      }
+
+      // Standard last batsman (end-of-over + common-player case is handled by deferNewBatsman above)
       const lastManName = strikerDismissed
         ? innings.batsmen[innings.nonStrikerId ?? '']?.name ?? 'Last player'
         : innings.batsmen[innings.strikerId ?? '']?.name ?? 'Last player'
@@ -500,7 +566,7 @@ export default function Scoring() {
   }
 
   // ── 3. Opening batsmen ──
-  if (needsBatsmen) {
+  if (needsBatsmen && !deferNeedsBatsmen) {
     return (
       <PlayerSelector
         title="Select Opening Batsmen"
