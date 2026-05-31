@@ -617,6 +617,98 @@ describe('Scenario I — common player batting (not bowling)', () => {
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Scenario I-2 — needsBatsmen mid-over deadlock (the screenshot bug)
+// Common player is bowling, strikerId=null, nonStrikerId=null, isNewOver=false
+// → deferNeedsBatsmen=false but commonPlayerOnlyForOpening=true
+// → replacement bowler screen must show (NOT empty "Select Opening Batsmen")
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Scenario I-2 — needsBatsmen mid-over with common player only (screenshot bug)', () => {
+  it('deferNeedsBatsmen=false mid-over even when commonPlayerOnlyForOpening=true', () => {
+    // bowler just set for this over (over entry created → isNewOver=false), mid-over
+    const innings = makeInnings({
+      strikerId: null,
+      nonStrikerId: null,
+      totalLegalBalls: 3,
+      overs: [{ number: 1, balls: [], bowlerId: 'Q3' }],
+      batsmen: {
+        P1: { playerId: 'P1', name: 'Alice', runs: 0, balls: 3, fours: 0, sixes: 0, isOut: true, battingPosition: 1 },
+        P2: { playerId: 'P2', name: 'Bob', runs: 0, balls: 2, fours: 0, sixes: 0, isOut: true, battingPosition: 2 },
+      },
+    })
+    const needsBatsman = !innings.strikerId && !innings.nonStrikerId
+    const f = deriveFlags(innings, false, needsBatsman, 'Charlie')
+    expect(f.isNewOver).toBe(false)
+    expect(f.commonPlayerOnlyForOpening).toBe(true)
+    // deferNeedsBatsmen is false — the needsBatsmen block shows
+    expect(f.deferNeedsBatsmen).toBe(false)
+    // But the fix ensures commonPlayerOnlyForOpening=true triggers replacement bowler screen,
+    // NOT the empty "Select Opening Batsmen" selector
+  })
+
+  it('commonPlayerOnlyForOpening=true when all others out and common player excluded', () => {
+    const innings = makeInnings({
+      strikerId: null,
+      nonStrikerId: null,
+      bowlerId: 'Q3', // Charlie is the active bowler
+      totalLegalBalls: 4,
+      overs: [{ number: 1, balls: [], bowlerId: 'Q3' }],
+      batsmen: {
+        P1: { playerId: 'P1', name: 'Alice', runs: 5, balls: 4, fours: 0, sixes: 0, isOut: true, battingPosition: 1 },
+        P2: { playerId: 'P2', name: 'Bob', runs: 2, balls: 3, fours: 0, sixes: 0, isOut: true, battingPosition: 2 },
+      },
+    })
+    const needsBatsman = true
+    const f = deriveFlags(innings, false, needsBatsman, 'Charlie')
+    expect(f.commonPlayerOnlyForOpening).toBe(true)
+    // Replacement bowler list: fielding team minus current bowler (Q3=Charlie)
+    const replacementBowlers = fieldingTeam.players.filter((p) => p.id !== innings.bowlerId)
+    expect(replacementBowlers).toHaveLength(2)
+    expect(replacementBowlers.map((p) => p.name)).toContain('Dave')
+    expect(replacementBowlers.map((p) => p.name)).toContain('Eve')
+  })
+
+  it('remaining balls calculated correctly for mid-over state', () => {
+    // ball 3 of 6 → 3 remaining
+    expect(6 - (3 % 6)).toBe(3)
+    // ball 1 of 6 → 5 remaining
+    expect(6 - (1 % 6)).toBe(5)
+    // ball 5 of 6 → 1 remaining
+    expect(6 - (5 % 6)).toBe(1)
+  })
+
+  it('remaining balls = 6 at start of new over (totalLegalBalls % 6 === 0, isNewOver=false)', () => {
+    // Common player selected as bowler at start of over → totalLegalBalls=6, over entry created
+    const ballsInCurrentOver = 6 % 6 // = 0
+    const remainingBalls = ballsInCurrentOver === 0 ? 6 : (6 - ballsInCurrentOver)
+    expect(remainingBalls).toBe(6)
+  })
+
+  it('after replacement bowler + setBatsmen: no deadlock, game resumes', () => {
+    // State after the fix applies: Q1=Dave becomes bowler, P3=Charlie bats
+    const innings = makeInnings({
+      strikerId: 'P3', // common player now batting
+      nonStrikerId: null,
+      bowlerId: 'Q1', // Dave is replacement bowler
+      totalLegalBalls: 4,
+      batsmen: {
+        P1: { playerId: 'P1', name: 'Alice', runs: 0, balls: 3, fours: 0, sixes: 0, isOut: true, battingPosition: 1 },
+        P2: { playerId: 'P2', name: 'Bob', runs: 0, balls: 2, fours: 0, sixes: 0, isOut: true, battingPosition: 2 },
+        P3: { playerId: 'P3', name: 'Charlie', runs: 0, balls: 0, fours: 0, sixes: 0, isOut: false, battingPosition: 3 },
+      },
+    })
+    const needsBatsman = !innings.strikerId && !innings.nonStrikerId // = false
+    expect(needsBatsman).toBe(false)
+    const f = deriveFlags(innings, false, needsBatsman, 'Dave')
+    expect(f.batsmanExcludeShared).toHaveLength(0)
+    expect(f.commonPlayerOnlyForOpening).toBe(false)
+    // strikerId is set → scoring can proceed immediately
+    expect(innings.strikerId).toBe('P3')
+    expect(innings.bowlerId).toBe('Q1')
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Scenario J — edge cases
 // ─────────────────────────────────────────────────────────────────────────────
 

@@ -567,6 +567,39 @@ export default function Scoring() {
 
   // ── 3. Opening batsmen ──
   if (needsBatsmen && !deferNeedsBatsmen) {
+    // Common player is bowling and is the only remaining batsman (mid-over OR start-of-over
+    // where isNewOver=false so the defer didn't apply). Show a replacement bowler screen
+    // instead of an empty player list — prevents the "Select Opening Batsmen" deadlock.
+    if (commonPlayerOnlyForOpening) {
+      const commonBatsman = _openingAvailableIgnoringShared[0]
+      const ballsInCurrentOver = innings.totalLegalBalls % 6
+      const remainingBalls = ballsInCurrentOver === 0 ? 6 : (6 - ballsInCurrentOver)
+      return (
+        <>
+          <div className="px-4 pt-6 max-w-lg mx-auto">
+            <div className="bg-yellow-900/30 border border-yellow-700/50 rounded-xl p-4 mb-4 text-sm text-center">
+              <p className="text-yellow-300 font-semibold mb-1">⚠️ All batsmen are out</p>
+              <p className="text-gray-300">
+                {commonBatsman?.name ?? activeBowlerName} will bat — select a replacement bowler to complete the over.
+              </p>
+              <p className="text-gray-400 text-xs mt-1">
+                {remainingBalls} ball{remainingBalls !== 1 ? 's' : ''} remaining in this over.
+              </p>
+            </div>
+          </div>
+          <PlayerSelector
+            title="Replacement Bowler"
+            players={fieldingTeam.players}
+            exclude={[innings.bowlerId ?? '']}
+            onSelect={(id) => {
+              setBowler(id)
+              if (commonBatsman) setBatsmen(commonBatsman.id, '')
+            }}
+          />
+        </>
+      )
+    }
+
     return (
       <PlayerSelector
         title="Select Opening Batsmen"
