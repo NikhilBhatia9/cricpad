@@ -25,13 +25,17 @@ export default function PlayerSelector({
   currentNonStriker,
   onSetBatsmen,
 }: Props) {
-  const [striker, setStriker] = useState(currentStriker ?? '')
+  const available = players.filter((p) => !exclude.includes(p.id))
+  const singlePlayer = available.length === 1
+
+  // Auto-select the sole available player as striker when only one option exists
+  const [striker, setStriker] = useState(currentStriker ?? (singlePlayer ? available[0].id : ''))
   const [nonStriker, setNonStriker] = useState(currentNonStriker ?? '')
 
-  const available = players.filter((p) => !exclude.includes(p.id))
-
   if (isTwoStep && onSetBatsmen) {
-    const canConfirm = striker && nonStriker && striker !== nonStriker
+    // Allow confirming with just a striker when only one batsman is available
+    // (e.g. common player is the last remaining batsman — no non-striker possible)
+    const canConfirm = striker && (available.length <= 1 || (nonStriker && striker !== nonStriker))
     return (
       <div className="px-4 py-6 max-w-lg mx-auto">
         <h2 className="text-xl font-bold mb-6 text-center">{title}</h2>
@@ -54,20 +58,26 @@ export default function PlayerSelector({
         </div>
 
         <div className="mb-6">
-          <p className="text-sm text-gray-400 mb-2">Non-striker</p>
-          <div className="grid grid-cols-2 gap-2">
-            {available.filter((p) => p.id !== striker).map((p) => (
-              <button
-                key={p.id}
-                onClick={() => setNonStriker(p.id)}
-                className={`py-3 px-4 rounded-xl font-semibold text-sm transition-colors ${
-                  nonStriker === p.id ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
-                }`}
-              >
-                {p.name}
-              </button>
-            ))}
-          </div>
+          {singlePlayer ? (
+            <p className="text-sm text-gray-500 italic text-center">No non-striker available</p>
+          ) : (
+            <>
+              <p className="text-sm text-gray-400 mb-2">Non-striker</p>
+              <div className="grid grid-cols-2 gap-2">
+                {available.filter((p) => p.id !== striker).map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => setNonStriker(p.id)}
+                    className={`py-3 px-4 rounded-xl font-semibold text-sm transition-colors ${
+                      nonStriker === p.id ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                    }`}
+                  >
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         <button
